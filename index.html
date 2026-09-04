@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=9.0.1">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=10.0.0">
 <title>莉芸家預算</title>
 </head>
 <body><div class="app">
@@ -60,19 +60,9 @@
     <div class="debtSummary"><span>中信舊帳 <b id="ctbcCarryView">$0</b></span><span>富邦本期分期 <b id="fubonInstallmentDue">$0</b></span></div>
   </section>
 
-  <section class="ccPanel">
-    <div class="ccPanelHead"><div><small>新增信用卡消費</small><h2>記一筆刷卡</h2></div><button id="toggleCardForm" class="ccAdd">＋ 新增</button></div>
-    <div id="cardForm" class="cardForm hidden">
-      <div class="cardFormGrid">
-        <label>消費日期<input id="ccDate" type="date"></label>
-        <label>信用卡<select id="ccCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option></select></label>
-        <label>金額<input id="ccAmount" type="number" min="1" inputmode="numeric" placeholder="例如 680"></label>
-        <label>分類<select id="ccCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label>
-      </div>
-      <label>店家／備註<input id="ccNote" placeholder="例如：全聯、餐廳、網購"></label>
-      <label class="syncCheck"><input id="ccSyncDaily" type="checkbox" checked><span>同步計入「每日開銷」，一起扣除本月目前可用</span></label>
-      <div class="quickActions"><button id="cancelCard" class="soft">取消</button><button id="saveCard" class="primarySmall">儲存刷卡</button></div>
-    </div>
+  <section class="ccPanel ccInfoOnly">
+    <div class="ccPanelHead"><div><small>消費登錄方式</small><h2>從「今日開銷」直接記錄</h2></div></div>
+    <p class="ccEntryHint">刷卡消費請到「今日開銷」新增，付款方式選擇中國信託或台北富邦；這裡會自動帶入消費明細與下期帳單預估。</p>
   </section>
 
   <section class="ccPanel">
@@ -90,6 +80,14 @@
     <div class="quickForm standalone">
       <div class="quickGrid"><label>金額<input id="qAmount" type="number" min="1" inputmode="numeric" placeholder="例如 120"></label><label>分類<select id="qCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label></div>
       <label>備註<input id="qNote" placeholder="例如：午餐"></label>
+      <div class="payMethodBlock">
+        <span class="fieldTitle">付款方式</span>
+        <div class="payMethodTabs" id="payMethodTabs">
+          <button type="button" data-method="cash" class="active">現金</button>
+          <button type="button" data-method="credit">信用卡</button>
+        </div>
+        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option></select></label>
+      </div>
       <button id="saveQ" class="dailySave">＋ 加入今日開銷</button>
     </div>
   </section>
@@ -105,4 +103,4 @@
 <nav class="nav4"><button data-v="budget" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><small>預算</small></button><button data-v="quick"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"/></svg><small>今日開銷</small></button><button data-v="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/></svg><small>信用卡</small></button><button data-v="diag"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7"/></svg><small>診斷</small></button></nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
-<script src="./app.js?v=9.0.1"></script></body></html>
+<script src="./app.js?v=10.0.0"></script></body></html>

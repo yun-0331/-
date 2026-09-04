@@ -34,3 +34,7 @@ nav.nav4 button small{font-size:10px;line-height:1.1}
 #budget>.dailyCard,#budget>.dailyDetails,#budget>.quickForm{display:none!important}
 @media(min-width:431px){body{padding-left:0;padding-right:0}.app{border-left:1px solid #eee3e1;border-right:1px solid #eee3e1}}
 @media(max-width:390px){.adviceGrid{grid-template-columns:1fr}.dailySummary{gap:5px}.dailySummary b{font-size:13px}}
+
+
+/* ===== v10：今日開銷統一登錄現金 / 信用卡 ===== */
+.payMethodBlock{margin-top:11px}.fieldTitle{display:block;font-size:10px;color:#81767b;margin:0 0 6px 2px;font-weight:700}.payMethodTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:4px;border-radius:14px;background:#f5eef3;border:1px solid #eadfe5}.payMethodTabs button{height:39px;border:0;border-radius:11px;background:transparent;color:#81747c;font-size:12px;font-weight:800;cursor:pointer}.payMethodTabs button.active{background:#fff;color:#80558c;box-shadow:0 3px 10px rgba(104,78,94,.08)}.qCardWrap{display:block;margin-top:9px}.qCardWrap.hidden{display:none}.ccInfoOnly{background:linear-gradient(135deg,#fffaf9,#faf6fc)}.ccEntryHint{margin:10px 0 0;font-size:10px;line-height:1.65;color:#8f858b}.ccTx.readOnly{grid-template-columns:48px minmax(0,1fr) auto}.ccTx.readOnly .ccTxAmount{padding-right:2px}
