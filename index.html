@@ -18,11 +18,17 @@
 </header>
 <main>
 <section id="budget" class="view active">
-  <div class="tabs"><button>個人</button><button>公費</button><button class="active">家庭</button></div>
   <div class="hero">
     <div><small>本月目前可用</small><strong id="heroAvail">$0</strong><span id="heroSub">完成收入與固定支出後會自動計算</span></div>
     <div class="meter"><div id="meterFill"></div></div>
   </div>
+  <section class="dailyCard">
+    <div class="dailyHead"><div><small>每日開銷明細</small><h2>今天到現在花了多少？</h2></div><b id="dailyRemain">$0</b></div>
+    <div class="dailyStats"><div><small>本月日常額度</small><b id="dailyBudget">$0</b></div><div><small>已花費</small><b id="dailySpent">$0</b></div><div><small>剩餘可用</small><b id="dailyAvailable">$0</b></div></div>
+    <div class="dailyMeter"><div id="dailyMeterFill"></div></div>
+    <div id="dailyDetails" class="dailyDetails"></div>
+    <button class="dailyAdd" data-open-quick>＋ 記一筆今日開銷</button>
+  </section>
   <div class="steps" id="steps">
     <button data-step="1"><span>1</span><b>收入</b><small id="sIncome">$0</small></button>
     <button data-step="2"><span>2</span><b>看建議</b><small id="sRemain">$0</small></button>
@@ -94,11 +100,12 @@
   <div class="panel"><h2>本月診斷</h2><div class="stats"><div>家庭收入<b id="dIncome"></b></div><div>固定支出<b id="dFixed"></b></div><div>機動支出<b id="dSpent"></b></div><div>目前可用<b id="dAvail"></b></div></div><div id="diagMsg" class="note"></div></div>
 </section>
 
-<section id="news" class="view"><div class="panel"><h2>快訊</h2><div id="newsList"></div></div></section>
-
-<section id="more" class="view"><div class="panel"><h2>更多</h2><button id="export" class="soft full">匯出本月備份 JSON</button><label class="importLabel">匯入備份 JSON<input id="importFile" type="file" accept="application/json"></label><button id="reset" class="danger full">重設本月資料</button><p class="hint">資料只存在目前瀏覽器，不會自動同步到其他手機或電腦。</p></div></section>
 </main>
-<nav><button data-v="news">📣<small>快訊</small></button><button data-v="budget" class="active">👛<small>預算</small></button><button data-v="quick" class="plus">＋<small>快速記帳</small></button><button data-v="diag">▥<small>診斷</small></button><button data-v="more">•••<small>更多</small></button></nav>
+<nav>
+  <button data-v="budget" class="active">◉<small>預算</small></button>
+  <button data-v="quick" class="plus">＋<small>快速記帳</small></button>
+  <button data-v="diag">▥<small>診斷</small></button>
+</nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
 <script src="./app.js"></script>

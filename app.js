@@ -22,6 +22,15 @@ function setStep(n){data.step=n;localStorage.setItem(key(),JSON.stringify(data))
 function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName ${'cat-'+(x.category||'其他')}">${catIcon(x.category)}<b>${x.name}</b></span><select class="catSelect" aria-label="${x.name}分類">${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}"><button class="deleteExpense" aria-label="刪除">×</button>`;d.querySelector('input').onchange=e=>{data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{data.expenses[i].category=e.target.value;save()};d.querySelector('button').onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
 function renderCategorySummary(){let g=$('#categorySummary');if(!g)return;let totals=Object.fromEntries(CATS.map(c=>[c,0]));data.expenses.forEach(e=>totals[e.category||'其他']=(totals[e.category||'其他']||0)+(+e.amount||0));g.innerHTML=CATS.map(c=>`<div class="catSummary cat-${c}">${catIcon(c)}<div><small>${c}</small><b>${fmt(totals[c])}</b></div></div>`).join('')}
 function ledger(){let l=$('#ledger');l.innerHTML=data.ledger.length?'':'<p class="hint">本月還沒有快速記帳。</p>';[...data.ledger].reverse().forEach((x,ri)=>{let i=data.ledger.length-1-ri,d=document.createElement('div');d.className='ledger';d.innerHTML=`<div><b>${x.note||x.category}</b><small>${x.category}・${x.method}・${x.date}</small></div><div><b>${fmt(x.amount)}</b> <button>刪除</button></div>`;d.querySelector('button').onclick=()=>{data.ledger.splice(i,1);save()};l.appendChild(d)})}
+function dailyDetails(){
+  const el=$('#dailyDetails'); if(!el)return;
+  const items=[...data.ledger].reverse();
+  if(!items.length){el.innerHTML='<div class="dailyEmpty">本月還沒有開銷，按下面「記一筆今日開銷」開始吧。</div>';return}
+  el.innerHTML=items.map(x=>{
+    const date=(x.date||'').replaceAll('/','/');
+    return `<div class="dailyRow"><div class="dailyDate">${date||'今天'}</div><div class="dailyInfo"><b>${x.note||x.category}</b><small>${x.category}・${x.method}</small></div><div class="dailyAmount">-${fmt(x.amount)}</div></div>`;
+  }).join('');
+}
 function render(){
   let r=remain(), rate=inc()>0?fixed()/inc()*100:0, a=avail(), db=dailyBudget(), b=buffer();
   $('#month').textContent=`${cur.y}/${cur.m}`;
@@ -33,10 +42,10 @@ function render(){
   $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=fmt(Math.max(0,r));
   $('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fBuffer').textContent=fmt(b);$('#bufferTarget').value=b;
   $('#heroAvail').textContent=fmt(Math.max(0,a));$('#heroSub').textContent=`日常額度 ${fmt(db)}・已記帳 ${fmt(spent())}`;let pct=db>0?Math.min(100,Math.max(0,spent()/db*100)):0;$('#meterFill').style.width=pct+'%';
+  $('#dailyBudget').textContent=fmt(db);$('#dailySpent').textContent=fmt(spent());$('#dailyAvailable').textContent=fmt(Math.max(0,a));$('#dailyRemain').textContent=fmt(Math.max(0,a));$('#dailyMeterFill').style.width=pct+'%';
   $('#spent').textContent=fmt(spent());$('#dIncome').textContent=fmt(inc());$('#dFixed').textContent=fmt(fixed());$('#dSpent').textContent=fmt(spent());$('#dAvail').textContent=fmt(Math.max(0,a));
   $('#diagMsg').innerHTML=a>=0?`目前仍在日常預算內，扣除固定支出、緩衝金與已記帳後，尚可使用 <b>${fmt(a)}</b>。`:`本月日常支出已超過設定額度 <b>${fmt(Math.abs(a))}</b>。`;
-  $('#newsList').innerHTML=`<div class="note"><b>${data.finished?'本月預算已完成':'本月預算尚未完成'}</b><br>固定支出 ${fmt(fixed())}，緩衝金 ${fmt(b)}，日常可用 ${fmt(db)}，已記帳 ${fmt(spent())}。</div>`;
-  expenses();ledger();setStep(data.step||3)
+  expenses();ledger();dailyDetails();setStep(data.step||3)
 }
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
@@ -47,9 +56,9 @@ $('#addExpense').onclick=()=>$('#dlg').showModal();
 $('#eSave').onclick=e=>{let name=$('#eName').value.trim(),amount=+$('#eAmount').value||0;if(!name||amount<=0){e.preventDefault();return alert('請輸入名稱與金額')}data.expenses.push({name,amount,category:$('#eCategory').value});data.finished=false;$('#eName').value='';$('#eAmount').value='';save()};
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=load();render()}
 $('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
+$$('[data-open-quick]').forEach(b=>b.onclick=()=>{ $$('.view').forEach(v=>v.classList.remove('active'));$$('nav button').forEach(x=>x.classList.remove('active'));$('#quick').classList.add('active');$$('nav button').find(x=>x.dataset.v==='quick')?.classList.add('active');$('#qAmount').focus();});
 $$('nav button').forEach(b=>b.onclick=()=>{$$('.view').forEach(v=>v.classList.remove('active'));$$('nav button').forEach(x=>x.classList.remove('active'));$('#'+b.dataset.v).classList.add('active');b.classList.add('active')});
 $('#export').onclick=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`莉芸家預算_${cur.y}-${String(cur.m).padStart(2,'0')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('#importFile').onchange=async e=>{let f=e.target.files?.[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!x.income||!Array.isArray(x.expenses))throw 0;data=x;if(data.bufferTarget===undefined)data.bufferTarget=null;if(!data.step)data.step=3;save();alert('備份已匯入')}catch(err){alert('這個檔案不是有效的莉芸家預算備份')}e.target.value=''};
-$('#reset').onclick=()=>{if(confirm('確定重設本月資料？')){localStorage.removeItem(key());data=fresh();render()}};
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
 render();
