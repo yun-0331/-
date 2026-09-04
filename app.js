@@ -312,8 +312,23 @@ function renderBankLoans(){
   $$('#bankLoanCards [data-bankloan]').forEach(card=>{let i=+card.dataset.bankloan;card.querySelectorAll('[data-bl]').forEach(inp=>inp.addEventListener('change',()=>{let k=inp.dataset.bl,v=Math.max(0,+inp.value||0);if(k==='extra')v=Math.min(v,+bankLoans[i].principal||0);bankLoans[i][k]=v;saveBankLoans()}))})
 }
 
+
+function resetAllAppData(){
+  const ok=window.confirm('確定要清除所有紀錄並恢復初始狀態嗎？\n\n會清除：今日開銷、今日收入、信用卡消費紀錄、借款紀錄、手頭現金，以及你自行修改過的資料。\n\n目前版本設定好的家庭固定支出、貸款基本資料與排程會恢復成乾淨預設值。');
+  if(!ok)return;
+  const ok2=window.confirm('最後確認：清除後無法復原。確定要重新開始記帳嗎？');
+  if(!ok2)return;
+  const appPrefixes=['liyunjia-'];
+  const appKeys=new Set([CARD_KEY,CARD_SETTINGS_KEY,LOAN_KEY,BANK_LOAN_KEY,'liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']);
+  Object.keys(localStorage).forEach(k=>{if(appPrefixes.some(p=>k.startsWith(p))||appKeys.has(k))localStorage.removeItem(k)});
+  sessionStorage.clear();
+  alert('已清除所有記帳紀錄，現在會以乾淨的初始狀態重新開啟。');
+  location.reload();
+}
+const resetAllDataBtn=$('#resetAllData');if(resetAllDataBtn)resetAllDataBtn.addEventListener('click',resetAllAppData);
+
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=25.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=25.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=26.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=26.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
