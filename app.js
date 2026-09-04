@@ -14,7 +14,7 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   if(!Array.isArray(x.expenses)||!x.expenses.length)x.expenses=fresh().expenses;
   if(x.expenses.every(e=>(+e.amount||0)===0))x.expenses=fresh().expenses;
   x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaults[i]?.[2]||'其他'}));
-  if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.bufferTarget===undefined)x.bufferTarget=null; if(!x.step)x.step=1; return x}
+  if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.bufferTarget===undefined)x.bufferTarget=null; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
 let data=loadMonth();
 const inc=()=>+data.income.husband + +data.income.wife + +data.income.other;
 const fixed=()=>data.expenses.reduce((s,x)=>s+(+x.amount||0),0);
@@ -153,8 +153,8 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
  $('#heroAvail').textContent=fmt(Math.max(0,a));$('#heroSub').textContent=`收入 ${fmt(inc())}・固定支出 ${fmt(fixed())}・已花 ${fmt(spent())}`;$('#meterFill').style.width=pct+'%';
  $('#dailyPageAvail').textContent=fmt(Math.max(0,a));$('#dailyPageSpent').textContent=fmt(allSpent());$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash;$('#dailyToday').textContent=new Date().toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',weekday:'short'});$('#dailyListTitle').textContent=`${cur.y}/${cur.m} 收支紀錄`;$('#dailyBudget').textContent=fmt(db);$('#dailySpent').textContent=fmt(spent());$('#pocketSpent').textContent=fmt(pocketSpent());$('#dailyAvailable').textContent=fmt(Math.max(0,a));$('#dailyMeterFill').style.width=pct+'%';ledger();
  $('#sIncome').textContent=fmt(inc());$('#sRemain').textContent=fmt(Math.max(0,r));$('#sFixed').textContent=fmt(fixed());$('#sDone').textContent=data.finished?'✓ 已完成':'待確認';
- $('#incomeTotal').textContent=fmt(inc());$('#remainSummary').textContent=fmt(Math.max(0,r));$('#fixedTotal').textContent=fmt(fixed());$('#doneSummary').textContent=data.finished?'✓ 已完成':'待確認';$('#fixedRate').textContent=Math.round(rate)+'%';$('#fixedHint').textContent=rate<=80?'仍有保留彈性':'固定支出占比較高';$('#postFixed').textContent=fmt(Math.max(0,r));$('#bufferSuggest').textContent=fmt(suggestedBuffer());$('#spendSuggest').textContent=fmt(Math.max(0,r-suggestedBuffer()));
- $('#adviceMsg').innerHTML=r<0?`目前固定支出比收入多 <b>${fmt(Math.abs(r))}</b>，建議先檢查可調整項目。`:`固定支出後剩下 <b>${fmt(r)}</b>，系統先保留 <b>${fmt(suggestedBuffer())}</b> 作為緩衝。`;
+ $('#incomeTotal').textContent=fmt(inc());$('#remainSummary').textContent=fmt(Math.max(0,available()));$('#fixedTotal').textContent=fmt(fixed());$('#doneSummary').textContent=data.finished?'✓ 已完成':'待確認';$('#availIncome').textContent=fmt(inc());$('#availFixed').textContent=fmt(fixed());$('#availBuffer').textContent=fmt(buffer());$('#availSpend').textContent=fmt(Math.max(0,available()));
+ 
  $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=fmt(Math.max(0,r));$('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fBuffer').textContent=fmt(b);$('#bufferTarget').value=b;
  $('#dSpent').textContent=fmt(spent());$('#diagIncome').textContent=fmt(inc());$('#diagFixed').textContent=fmt(fixed());$('#diagSpent').textContent=fmt(spent());$('#diagAvail').textContent=fmt(Math.max(0,a));$('#diagMsg').innerHTML=a>=0?`扣除固定支出、緩衝金與每日開銷後，目前還有 <b>${fmt(a)}</b> 可以使用。`:`每日開銷已超過設定的日常額度 <b>${fmt(Math.abs(a))}</b>。`;
  expenses();setStep(data.step||1);renderCards();renderLoans()}
