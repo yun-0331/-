@@ -221,7 +221,46 @@ renderEntryType();
 $('#quickCashOnHand').onchange=()=>{loans.cash=Math.max(0,+$('#quickCashOnHand').value||0);saveLoans();render()};
 $('#saveLoan').onclick=addLoanTx;
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=loadMonth();render()};$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
-function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans()}
+
+
+// ----- 銀行貸款 / 大額還款試算 -----
+const BANK_LOAN_KEY='family-five-bank-loans-v1';
+const bankLoanDefaults=[
+  {id:'loan1',name:'貸款(一)',principal:422574,start:'2025-10-01',end:'2032-10-01',payment:7500,extra:0},
+  {id:'loan2',name:'貸款(二)',principal:298073,start:'2024-04-12',end:'2031-04-12',payment:6000,extra:0},
+  {id:'loan3',name:'貸款(三)',principal:219138,start:'2022-07-14',end:'2029-07-14',payment:7000,extra:0}
+];
+function loadBankLoans(){try{let x=JSON.parse(localStorage.getItem(BANK_LOAN_KEY)||'null');if(Array.isArray(x)&&x.length)return bankLoanDefaults.map((d,i)=>({...d,...(x.find(v=>v.id===d.id)||x[i]||{})}))}catch(e){}return bankLoanDefaults.map(x=>({...x}))}
+let bankLoans=loadBankLoans();
+function saveBankLoans(){localStorage.setItem(BANK_LOAN_KEY,JSON.stringify(bankLoans));renderBankLoans()}
+function monthDiffTo(dateStr){let d=new Date(dateStr+'T00:00:00'),n=new Date();let m=(d.getFullYear()-n.getFullYear())*12+(d.getMonth()-n.getMonth());if(d.getDate()>n.getDate())m++;return Math.max(0,m)}
+function elapsedPercent(start,end){let s=new Date(start+'T00:00:00').getTime(),e=new Date(end+'T00:00:00').getTime(),n=Date.now();if(e<=s)return 100;return Math.max(0,Math.min(100,((n-s)/(e-s))*100))}
+function zhDate(s){let [y,m,d]=s.split('-');return `${y}/${m}/${d}`}
+function renderBankLoans(){
+  const wrap=$('#bankLoanCards');if(!wrap)return;
+  const total=bankLoans.reduce((s,x)=>s+(+x.principal||0),0);
+  const monthly=bankLoans.reduce((s,x)=>s+(+x.payment||0),0);
+  $('#bankLoanTotal').textContent=fmt(total);$('#bankLoanMonthly').textContent=fmt(monthly);
+  wrap.innerHTML=bankLoans.map((x,i)=>{
+    const p=Math.max(0,+x.principal||0),extra=Math.max(0,Math.min(p,+x.extra||0)),after=Math.max(0,p-extra),months=monthDiffTo(x.end),pay=Math.max(0,+x.payment||0);
+    const recast=p>0?Math.round(pay*(after/p)):0;
+    const elapsed=Math.round(elapsedPercent(x.start,x.end));
+    const status=after===0?'這筆已可清償 🎉':months>0?`距離到期約 ${months} 個月`:'已到到期日';
+    return `<section class="bankLoanCard" data-bankloan="${i}">
+      <div class="bankLoanTop"><div><small>${x.name}</small><strong>${fmt(p)}</strong><span>剩餘本金</span></div><div class="bankLoanStatus"><b>${status}</b><small>${zhDate(x.start)} → ${zhDate(x.end)}</small></div></div>
+      <div class="termTrack"><div style="width:${elapsed}%"></div></div><div class="termLabels"><span>貸款日</span><b>時間進度 ${elapsed}%</b><span>到期日</span></div>
+      <div class="bankLoanEditGrid"><label>剩餘本金<input data-bl="principal" type="number" min="0" inputmode="numeric" value="${p}"></label><label>目前每期應繳<input data-bl="payment" type="number" min="0" inputmode="numeric" value="${pay}"></label></div>
+      <div class="extraPayBox"><div class="extraPayTitle"><div><small>大額還款試算</small><b>這次想多還多少本金？</b></div><input data-bl="extra" type="number" min="0" max="${p}" inputmode="numeric" value="${extra}" placeholder="例如 50000"></div>
+        <div class="extraResults"><div><small>還款後剩餘本金</small><b>${fmt(after)}</b></div><div><small>剩餘期數</small><b>${months} 期左右</b></div><div class="accent"><small>重新攤還每期約</small><b>${fmt(recast)}</b></div></div>
+        <p>試算假設剩餘期數不變、利率與原貸款條件不變，銀行願意按新本金重新攤還。實際每期金額請以銀行核算為準。</p>
+      </div>
+    </section>`
+  }).join('');
+  $$('#bankLoanCards [data-bankloan]').forEach(card=>{let i=+card.dataset.bankloan;card.querySelectorAll('[data-bl]').forEach(inp=>inp.addEventListener('change',()=>{let k=inp.dataset.bl,v=Math.max(0,+inp.value||0);if(k==='extra')v=Math.min(v,+bankLoans[i].principal||0);bankLoans[i][k]=v;saveBankLoans()}))})
+}
+
+function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=18.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=18.0.0',{updateViaCache:'none'})}catch(e){}})}
+renderBankLoans();
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=21.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=21.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
