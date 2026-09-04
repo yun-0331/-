@@ -3,7 +3,7 @@ const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('zh-TW');
 let cur={y:2026,m:9};
 const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=12))?2980:0;
 const cardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
-const defaultsFor=(y=cur.y,m=cur.m)=>[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['保險',16500,'必要'],['信貸(1)',7000,'債務'],['信貸(2)',6000,'債務'],['信貸(3)',7500,'債務'],['分期（至115年12月）',installmentAmount(y,m),'債務'],['卡費（10月～1月）',cardFeeAmount(y,m),'債務'],['補習與英文',17100,'小孩'],['大寶生活費（300×4週）',1200,'小孩'],['二寶生活費（100×4週）',400,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']];
+const defaultsFor=(y=cur.y,m=cur.m)=>[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務'],['分期（至115年12月）',installmentAmount(y,m),'債務'],['卡費（10月～1月）',cardFeeAmount(y,m),'債務'],['補習與英文',17100,'小孩'],['大寶生活費（300×4週）',1200,'小孩'],['二寶生活費（100×4週）',400,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']];
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
@@ -25,6 +25,9 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
     {name:'二寶生活費（100×4週）',amount:400,category:'小孩',scheduleId:'child-second'}
   ];
   scheduled.forEach(row=>{let e=x.expenses.find(e=>e.name===row.name||e.scheduleId===row.scheduleId);if(e){e.name=row.name;e.amount=row.amount;e.category=row.category;e.scheduleId=row.scheduleId}else x.expenses.push({...row})});
+  // v24：修正三筆信貸的正確每月繳款金額。
+  const correctLoanPayments={'信貸(1)':7496,'信貸(2)':6100,'信貸(3)':6844};
+  x.expenses.forEach(e=>{if(correctLoanPayments[e.name]!==undefined){e.amount=correctLoanPayments[e.name];e.category='債務';e.correctLoanPayment=true}});
   x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaultsFor(y,m)[i]?.[2]||'其他'}));
   if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
 let data=loadMonth();
@@ -269,16 +272,19 @@ function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.
 // ----- 銀行貸款 / 大額還款試算 -----
 const BANK_LOAN_KEY='family-five-bank-loans-v1';
 const bankLoanDefaults=[
-  {id:'loan1',name:'貸款(一)',principal:422574,start:'2025-10-01',end:'2032-10-01',payment:7500,extra:0},
-  {id:'loan2',name:'貸款(二)',principal:298073,start:'2024-04-12',end:'2031-04-12',payment:6000,extra:0},
-  {id:'loan3',name:'貸款(三)',principal:219138,start:'2022-07-14',end:'2029-07-14',payment:7000,extra:0}
+  {id:'loan1',name:'貸款(一)',principal:422574,start:'2025-10-01',end:'2032-10-01',payment:7496,extra:0},
+  {id:'loan2',name:'貸款(二)',principal:298073,start:'2024-04-12',end:'2031-04-12',payment:6100,extra:0},
+  {id:'loan3',name:'貸款(三)',principal:219138,start:'2022-07-14',end:'2029-07-14',payment:6844,extra:0}
 ];
-function loadBankLoans(){try{let x=JSON.parse(localStorage.getItem(BANK_LOAN_KEY)||'null');if(Array.isArray(x)&&x.length)return bankLoanDefaults.map((d,i)=>({...d,...(x.find(v=>v.id===d.id)||x[i]||{})}))}catch(e){}return bankLoanDefaults.map(x=>({...x}))}
+function loadBankLoans(){try{let x=JSON.parse(localStorage.getItem(BANK_LOAN_KEY)||'null');if(Array.isArray(x)&&x.length)return bankLoanDefaults.map((d,i)=>{let saved=x.find(v=>v.id===d.id)||x[i]||{};return {...d,...saved,payment:d.payment}})}catch(e){}return bankLoanDefaults.map(x=>({...x}))}
 let bankLoans=loadBankLoans();
 function saveBankLoans(){localStorage.setItem(BANK_LOAN_KEY,JSON.stringify(bankLoans));renderBankLoans()}
 function monthDiffTo(dateStr){let d=new Date(dateStr+'T00:00:00'),n=new Date();let m=(d.getFullYear()-n.getFullYear())*12+(d.getMonth()-n.getMonth());if(d.getDate()>n.getDate())m++;return Math.max(0,m)}
 function elapsedPercent(start,end){let s=new Date(start+'T00:00:00').getTime(),e=new Date(end+'T00:00:00').getTime(),n=Date.now();if(e<=s)return 100;return Math.max(0,Math.min(100,((n-s)/(e-s))*100))}
 function zhDate(s){let [y,m,d]=s.split('-');return `${y}/${m}/${d}`}
+function loanBalanceAtRate(rate,n,payment){if(n<=0)return 0;if(Math.abs(rate)<1e-10)return payment*n;return payment*(1-Math.pow(1+rate,-n))/rate}
+function impliedMonthlyRate(principal,payment,n){principal=+principal||0;payment=+payment||0;if(principal<=0||payment<=0||n<=0)return 0;if(payment*n<=principal)return 0;let lo=0,hi=.1;for(let i=0;i<100;i++){let mid=(lo+hi)/2,b=loanBalanceAtRate(mid,n,payment);if(b>principal)lo=mid;else hi=mid}return (lo+hi)/2}
+function paymentFor(principal,rate,n){if(principal<=0||n<=0)return 0;if(rate<=0)return Math.round(principal/n);return Math.round(principal*rate/(1-Math.pow(1+rate,-n)))}
 function renderBankLoans(){
   const wrap=$('#bankLoanCards');if(!wrap)return;
   const total=bankLoans.reduce((s,x)=>s+(+x.principal||0),0);
@@ -286,13 +292,15 @@ function renderBankLoans(){
   $('#bankLoanTotal').textContent=fmt(total);$('#bankLoanMonthly').textContent=fmt(monthly);
   wrap.innerHTML=bankLoans.map((x,i)=>{
     const p=Math.max(0,+x.principal||0),extra=Math.max(0,Math.min(p,+x.extra||0)),after=Math.max(0,p-extra),months=monthDiffTo(x.end),pay=Math.max(0,+x.payment||0);
-    const recast=p>0?Math.round(pay*(after/p)):0;
+    const monthlyRate=impliedMonthlyRate(p,pay,months),annualRate=monthlyRate*12*100;
+    const recast=paymentFor(after,monthlyRate,months);
     const elapsed=Math.round(elapsedPercent(x.start,x.end));
     const status=after===0?'這筆已可清償 🎉':months>0?`距離到期約 ${months} 個月`:'已到到期日';
     return `<section class="bankLoanCard" data-bankloan="${i}">
       <div class="bankLoanTop"><div><small>${x.name}</small><strong>${fmt(p)}</strong><span>剩餘本金</span></div><div class="bankLoanStatus"><b>${status}</b><small>${zhDate(x.start)} → ${zhDate(x.end)}</small></div></div>
       <div class="termTrack"><div style="width:${elapsed}%"></div></div><div class="termLabels"><span>貸款日</span><b>時間進度 ${elapsed}%</b><span>到期日</span></div>
       <div class="bankLoanEditGrid"><label>剩餘本金<input data-bl="principal" type="number" min="0" inputmode="numeric" value="${p}"></label><label>目前每期應繳<input data-bl="payment" type="number" min="0" inputmode="numeric" value="${pay}"></label></div>
+      <div class="loanRateRow"><div><small>依目前資料反推年利率</small><b>${annualRate>0?annualRate.toFixed(2)+'%':'無法反推'}</b></div><span>依剩餘本金＋每期金額＋到期日估算</span></div>
       <div class="extraPayBox"><div class="extraPayTitle"><div><small>大額還款試算</small><b>這次想多還多少本金？</b></div><input data-bl="extra" type="number" min="0" max="${p}" inputmode="numeric" value="${extra}" placeholder="例如 50000"></div>
         <div class="extraResults"><div><small>還款後剩餘本金</small><b>${fmt(after)}</b></div><div><small>剩餘期數</small><b>${months} 期左右</b></div><div class="accent"><small>重新攤還每期約</small><b>${fmt(recast)}</b></div></div>
         <p>試算假設剩餘期數不變、利率與原貸款條件不變，銀行願意按新本金重新攤還。實際每期金額請以銀行核算為準。</p>
@@ -305,5 +313,5 @@ function renderBankLoans(){
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=21.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=21.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=24.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=24.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
