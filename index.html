@@ -46,10 +46,52 @@
   <section class="stepPanel" data-panel="4"><div class="cardHead"><div><small>步驟 4</small><h2>確認本月預算</h2></div><b id="doneSummary">待確認</b></div><div class="finishCard"><div><small>本月收入</small><strong id="fIncome">$0</strong></div><div><small>固定支出</small><strong id="fFixed">$0</strong></div><div><small>日常可用</small><strong id="fSpend">$0</strong></div><div><small>保留緩衝</small><strong id="fBuffer">$0</strong></div></div><label class="bufferEdit">我想保留的緩衝金<input id="bufferTarget" type="number" inputmode="numeric" min="0"></label><button id="finish" class="finishBtn">✓ 完成本月預算</button><p class="hint center">完成後仍可修改；每日開銷會自動從日常可用中扣除。</p></section>
 </section>
 
+<section id="cards" class="view">
+  <section class="cardHero">
+    <div><small>信用卡本月消費</small><strong id="ccMonthTotal">$0</strong><span>依消費日期統計；結帳金額依各卡結帳日自動分期計算</span></div>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/></svg>
+  </section>
+
+  <div class="ccGrid">
+    <section class="ccStatement ctbc">
+      <div class="ccTitle"><div class="ccLogo">中信</div><div><small>中國信託信用卡</small><h2 id="ctbcBill">$0</h2></div><span id="ctbcStatus" class="ccStatus">累計中</span></div>
+      <div class="ccMeta"><span>每月 <b>25 日</b>結帳</span><span id="ctbcCycle">—</span></div>
+      <div class="ccFoot">下期帳單預估 <b id="ctbcEstimate">$0</b></div>
+    </section>
+    <section class="ccStatement fubon">
+      <div class="ccTitle"><div class="ccLogo">富邦</div><div><small>台北富邦信用卡</small><h2 id="fubonBill">$0</h2></div><span id="fubonStatus" class="ccStatus">累計中</span></div>
+      <div class="ccMeta"><span>每月 <b>24 日</b>結帳</span><span id="fubonCycle">—</span></div>
+      <div class="ccFoot">下期帳單預估 <b id="fubonEstimate">$0</b></div>
+    </section>
+  </div>
+
+  <section class="ccPanel">
+    <div class="ccPanelHead"><div><small>新增信用卡消費</small><h2>記一筆刷卡</h2></div><button id="toggleCardForm" class="ccAdd">＋ 新增</button></div>
+    <div id="cardForm" class="cardForm hidden">
+      <div class="cardFormGrid">
+        <label>消費日期<input id="ccDate" type="date"></label>
+        <label>信用卡<select id="ccCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option></select></label>
+        <label>金額<input id="ccAmount" type="number" min="1" inputmode="numeric" placeholder="例如 680"></label>
+        <label>分類<select id="ccCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label>
+      </div>
+      <label>店家／備註<input id="ccNote" placeholder="例如：全聯、餐廳、網購"></label>
+      <label class="syncCheck"><input id="ccSyncDaily" type="checkbox" checked><span>同步計入「每日開銷」，一起扣除本月目前可用</span></label>
+      <div class="quickActions"><button id="cancelCard" class="soft">取消</button><button id="saveCard" class="primarySmall">儲存刷卡</button></div>
+    </div>
+  </section>
+
+  <section class="ccPanel">
+    <div class="ccPanelHead"><div><small>本月消費明細</small><h2 id="ccListTitle">2026/9 刷卡紀錄</h2></div><b id="ccListTotal">$0</b></div>
+    <div class="ccFilters"><button data-cardfilter="all" class="active">全部</button><button data-cardfilter="ctbc">中國信託</button><button data-cardfilter="fubon">台北富邦</button></div>
+    <div id="ccLedger" class="ccLedger"></div>
+  </section>
+  <p class="ccHint">※「下期帳單預估」依消費日期與結帳日計算；銀行實際帳單仍可能因入帳日、退款、分期、利息或其他費用不同。</p>
+</section>
+
 <section id="quick" class="view"><div class="panel"><h2>本月每日開銷</h2><div class="stats"><div>本月收入<b id="dIncome">$0</b></div><div>固定支出<b id="dFixed">$0</b></div><div>已記帳<b id="dSpent">$0</b></div><div>目前可用<b id="dAvail">$0</b></div></div><div id="ledger"></div></div></section>
 <section id="diag" class="view"><div class="panel"><h2>本月診斷</h2><div class="stats"><div>家庭收入<b id="diagIncome">$0</b></div><div>固定支出<b id="diagFixed">$0</b></div><div>機動支出<b id="diagSpent">$0</b></div><div>目前可用<b id="diagAvail">$0</b></div></div><div id="diagMsg" class="note"></div></div></section>
 </main>
-<nav><button data-v="budget" class="active">◉<small>預算</small></button><button id="navQuick" class="plus">＋<small>快速記帳</small></button><button data-v="diag">▥<small>診斷</small></button></nav>
+<nav class="nav4"><button data-v="budget" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><small>預算</small></button><button data-v="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/></svg><small>信用卡</small></button><button id="navQuick" class="plus">＋<small>快速記帳</small></button><button data-v="diag"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7"/></svg><small>診斷</small></button></nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
 <script src="./app.js"></script></body></html>
