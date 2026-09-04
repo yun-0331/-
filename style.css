@@ -70,3 +70,6 @@ nav.nav5{grid-template-columns:repeat(5,1fr)}nav.nav5 button>svg{display:block;w
 .minDueInput{margin-top:8px}
 
 .entryTypeTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px;padding:4px;background:#f6eff4;border-radius:14px}.entryTypeTabs button{height:38px;border:0;border-radius:11px;background:transparent;color:#81777d;font-weight:800}.entryTypeTabs button.active{background:#fff;color:#8d6098;box-shadow:0 3px 10px rgba(85,55,70,.08)}.ledger.incomeEntry>div:last-child>b{color:#9a659b}.ledger.incomeEntry{background:linear-gradient(90deg,rgba(246,238,250,.45),transparent)}
+
+/* v20 儲蓄區塊 */
+.savingsCard{grid-template-columns:1fr 1fr}.savingsCard .wideAvailable{grid-column:1/-1;background:linear-gradient(135deg,#fff8f8,#f7f0fa)}.savingsCard .wideAvailable strong{font-size:26px;color:#76557f}.suggestSaving small b{display:inline-block;margin-left:4px;padding:2px 6px;border-radius:99px;background:#f1e5f5;color:#8c5c99;font-size:9px}.suggestSaving strong{color:#8c5c99}.savingsInput{background:linear-gradient(135deg,#fffaf9,#faf4fb)}
