@@ -1,19 +1,31 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('zh-TW');
 let cur={y:2026,m:9};
-const defaults=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['保險',16500,'必要'],['信貸(1)',7000,'債務'],['信貸(2)',6000,'債務'],['信貸(3)',7500,'債務'],['分期／卡費',9390,'債務'],['補習與英文',17100,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']];
+const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=12))?2980:0;
+const cardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
+const defaultsFor=(y=cur.y,m=cur.m)=>[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['保險',16500,'必要'],['信貸(1)',7000,'債務'],['信貸(2)',6000,'債務'],['信貸(3)',7500,'債務'],['分期（至115年12月）',installmentAmount(y,m),'債務'],['卡費（10月～1月）',cardFeeAmount(y,m),'債務'],['補習與英文',17100,'小孩'],['大寶生活費（300×4週）',1200,'小孩'],['二寶生活費（100×4週）',400,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']];
+const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
 const catIcon=c=>`<svg class="catIcon" viewBox="0 0 24 24"><path d="${CAT_ICON[c]||CAT_ICON.其他}"/></svg>`;
 const key=(y=cur.y,m=cur.m)=>`liyunjia-${y}-${String(m).padStart(2,'0')}`;
-const fresh=()=>({income:{husband:67000,wife:33000,other:8000},expenses:defaults.map(([name,amount,category])=>({name,amount,category})),ledger:[],incomeLedger:[],finished:false,savedAmount:0,step:1});
+const fresh=(y=cur.y,m=cur.m)=>({income:{husband:67000,wife:33000,other:8000},expenses:defaultsFor(y,m).map(([name,amount,category])=>({name,amount,category})),ledger:[],incomeLedger:[],finished:false,savedAmount:0,step:1});
 function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.getItem(key(y,m))||'null')}catch(e){}
-  if(!x)x=fresh(); if(!x.income)x.income=fresh().income;
-  ['husband','wife','other'].forEach(k=>{if(x.income[k]===undefined||x.income[k]===null)x.income[k]=fresh().income[k]});
-  if(Number(x.income.husband)+Number(x.income.wife)+Number(x.income.other)===0)x.income=fresh().income;
-  if(!Array.isArray(x.expenses)||!x.expenses.length)x.expenses=fresh().expenses;
-  if(x.expenses.every(e=>(+e.amount||0)===0))x.expenses=fresh().expenses;
-  x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaults[i]?.[2]||'其他'}));
+  if(!x)x=fresh(y,m); if(!x.income)x.income=fresh(y,m).income;
+  ['husband','wife','other'].forEach(k=>{if(x.income[k]===undefined||x.income[k]===null)x.income[k]=fresh(y,m).income[k]});
+  if(Number(x.income.husband)+Number(x.income.wife)+Number(x.income.other)===0)x.income=fresh(y,m).income;
+  if(!Array.isArray(x.expenses)||!x.expenses.length)x.expenses=fresh(y,m).expenses;
+  if(x.expenses.every(e=>(+e.amount||0)===0))x.expenses=fresh(y,m).expenses;
+  // v23：舊版「分期／卡費」拆成分期與卡費，並加入兩位孩子每月生活費。
+  x.expenses=x.expenses.filter(e=>e.name!=='分期／卡費');
+  const scheduled=[
+    {name:'分期（至115年12月）',amount:installmentAmount(y,m),category:'債務',scheduleId:'installment-2026-12'},
+    {name:'卡費（10月～1月）',amount:cardFeeAmount(y,m),category:'債務',scheduleId:'cardfee-2026-10-2027-01'},
+    {name:'大寶生活費（300×4週）',amount:1200,category:'小孩',scheduleId:'child-big'},
+    {name:'二寶生活費（100×4週）',amount:400,category:'小孩',scheduleId:'child-second'}
+  ];
+  scheduled.forEach(row=>{let e=x.expenses.find(e=>e.name===row.name||e.scheduleId===row.scheduleId);if(e){e.name=row.name;e.amount=row.amount;e.category=row.category;e.scheduleId=row.scheduleId}else x.expenses.push({...row})});
+  x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaultsFor(y,m)[i]?.[2]||'其他'}));
   if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
 let data=loadMonth();
 const inc=()=>+data.income.husband + +data.income.wife + +data.income.other;
@@ -32,7 +44,7 @@ const dailyBudget=()=>baseAvailable();
 const avail=()=>dailyBudget()+livingExtraIncome()-spent();
 function save(){localStorage.setItem(key(),JSON.stringify(data));render()}
 function setStep(n){data.step=n;localStorage.setItem(key(),JSON.stringify(data));$$('.stepPanel').forEach(p=>p.classList.toggle('active',+p.dataset.panel===n));$$('#steps button').forEach(b=>b.classList.toggle('now',+b.dataset.step===n))}
-function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b>${x.autoCardId?'<em class="autoBadge">自動</em>':''}</span><select class="catSelect" ${x.autoCardId?'disabled':''}>${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}" ${x.autoCardId?'readonly':''}>${x.autoCardId?'':'<button class="deleteExpense">×</button>'}`;d.querySelector('input').onchange=e=>{if(x.autoCardId)return;data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{if(x.autoCardId)return;data.expenses[i].category=e.target.value;save()};let del=d.querySelector('button');if(del)del.onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
+function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b>${x.autoCardId?'<em class="autoBadge">自動</em>':x.scheduleId?'<em class="autoBadge">排程</em>':''}</span><select class="catSelect" ${(x.autoCardId||x.scheduleId)?'disabled':''}>${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}" ${(x.autoCardId||x.scheduleId)?'readonly':''}>${(x.autoCardId||x.scheduleId)?'':'<button class="deleteExpense">×</button>'}`;d.querySelector('input').onchange=e=>{if(x.autoCardId||x.scheduleId)return;data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{if(x.autoCardId||x.scheduleId)return;data.expenses[i].category=e.target.value;save()};let del=d.querySelector('button');if(del)del.onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
 function renderCategorySummary(){let g=$('#categorySummary');let totals=Object.fromEntries(CATS.map(c=>[c,0]));data.expenses.forEach(e=>totals[e.category||'其他']+=+e.amount||0);g.innerHTML=CATS.map(c=>`<div class="catSummary cat-${c}">${catIcon(c)}<div><small>${c}</small><b>${fmt(totals[c])}</b></div></div>`).join('')}
 function ledger(){let l=$('#ledger');let rows=[];data.ledger.forEach((x,i)=>rows.push({kind:'expense',x,i,sort:i+(x.created||0)}));data.incomeLedger.forEach((x,i)=>rows.push({kind:'income',x,i,sort:i+(x.created||0)}));rows.sort((a,b)=>(b.x.date||'').localeCompare(a.x.date||'')||(b.x.created||0)-(a.x.created||0));l.innerHTML=rows.length?'':'<p class="hint">本月還沒有收支紀錄。</p>';rows.forEach(r=>{let x=r.x,d=document.createElement('div');d.className='ledger'+(r.kind==='income'?' incomeEntry':'');if(r.kind==='income'){let dest=x.destination==='pocket'?'手頭上現金':'當月生活費';d.innerHTML=`<div><b>${escapeHtml(x.note||x.category||'今日收入')}</b><small>${escapeHtml(x.category||'其他收入')}・${dest}・${escapeHtml(x.date)}</small></div><div><b>+${fmt(x.amount)}</b> <button>刪除</button></div>`;d.querySelector('button').onclick=()=>{if(x.destination==='pocket'){loans.cash=Math.max(0,(+loans.cash||0)-(+x.amount||0));localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.incomeLedger.splice(r.i,1);save()}}else{let source=x.fundingSource==='pocket'?'手頭上現金':x.fundingSource==='living'?'當月生活費':'';let methodText=[x.method||'現金',source].filter(Boolean).join('・');d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b> <button>刪除</button></div>`;d.querySelector('button').onclick=()=>{if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()}}l.appendChild(d)})}
 
