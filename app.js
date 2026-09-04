@@ -150,6 +150,37 @@ function renderLoans(){
 function addLoanTx(){let type=$('#loanType').value,person=$('#loanPerson').value,amount=+$('#loanAmount').value||0,note=$('#loanNote').value.trim(),sync=$('#loanSyncCash').checked;if(amount<=0){alert('請輸入借款或還款金額');return}let before={cash:loans.cash,fund:loans.funds[person]??null,owed:loans.owed[person]||0};if(type==='borrow'){loans.owed[person]=(loans.owed[person]||0)+amount;if(childMap[person])loans.funds[person]=Math.max(0,(+loans.funds[person]||0)-amount);if(sync)loans.cash=(+loans.cash||0)+amount}else{let actual=Math.min(amount,+loans.owed[person]||0);if(actual<=0){alert('這個對象目前沒有尚欠借款');return}amount=actual;loans.owed[person]=Math.max(0,(+loans.owed[person]||0)-amount);if(childMap[person])loans.funds[person]=(+loans.funds[person]||0)+amount;if(sync)loans.cash=Math.max(0,(+loans.cash||0)-amount)}let now=new Date();loans.txs.push({id:'loan-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),type,person,amount,note,sync,date:now.toLocaleDateString('zh-TW',{year:'numeric',month:'numeric',day:'numeric'}),before});$('#loanAmount').value='';$('#loanNote').value='';saveLoans()}
 function deleteLoanTx(id){let i=loans.txs.findIndex(x=>x.id===id);if(i<0)return;let x=loans.txs[i];if(!confirm('刪除這筆借款明細並還原當時的餘額？'))return;let b=x.before||{};if(b.cash!==undefined)loans.cash=+b.cash||0;if(b.owed!==undefined)loans.owed[x.person]=+b.owed||0;if(childMap[x.person]&&b.fund!==null&&b.fund!==undefined)loans.funds[x.person]=+b.fund||0;loans.txs.splice(i,1);saveLoans()}
 
+
+function renderDiagnosis(){
+  const total=allSpent();
+  const totals={};
+  data.ledger.forEach(x=>{const c=x.category||'其他';totals[c]=(totals[c]||0)+(+x.amount||0)});
+  const rows=Object.entries(totals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const list=$('#diagCategoryList'), advice=$('#diagAdvice');
+  if(!list||!advice)return;
+  if(!rows.length){
+    list.innerHTML='<div class="diagEmpty">本月還沒有開銷紀錄。從「今日開銷」開始記帳後，這裡會自動分析。</div>';
+    advice.innerHTML='<div class="diagAdviceItem neutral"><b>先記錄幾筆開銷</b><p>有實際資料後，我會依照餐飲、購物、交通、生活等分類，找出比較有機會調整的項目。</p></div>';
+    return;
+  }
+  list.innerHTML=rows.map(([c,v],i)=>{const pct=total?Math.round(v/total*100):0;return `<div class="diagCatRow"><div><b>${i+1}. ${escapeHtml(c)}</b><small>${pct}%</small></div><strong>${fmt(v)}</strong><span><i style="width:${Math.min(100,pct)}%"></i></span></div>`}).join('');
+  const flexible=['購物','餐飲','其他','生活','交通'];
+  const messages=[];
+  rows.filter(([c])=>flexible.includes(c)).slice(0,3).forEach(([c,v])=>{
+    const pct=total?Math.round(v/total*100):0;
+    let text='';
+    if(c==='購物') text=`本月購物 ${fmt(v)}，占生活開銷 ${pct}%。可以先看看是否有非急需、重複購買或可以延到下個月的項目。`;
+    else if(c==='餐飲') text=`本月餐飲 ${fmt(v)}，占生活開銷 ${pct}%。若外食、飲料或臨時加買較多，可以從其中挑一小部分減少，不必把正常吃飯預算壓得太低。`;
+    else if(c==='交通') text=`本月交通 ${fmt(v)}，占生活開銷 ${pct}%。可以檢查是否有可合併的行程、停車費或非必要往返；固定通勤則不列為優先刪減。`;
+    else if(c==='生活') text=`本月生活類 ${fmt(v)}，占生活開銷 ${pct}%。可以打開明細找一次性或可延後採買的項目。`;
+    else text=`本月其他類 ${fmt(v)}，占生活開銷 ${pct}%。「其他」通常最容易藏著零碎支出，建議先檢查明細，看哪些其實可以少買或重新分類。`;
+    messages.push({c,v,text});
+  });
+  const adjustable=data.expenses.filter(x=>x.category==='可調整'&&(+x.amount||0)>0).sort((a,b)=>b.amount-a.amount);
+  if(adjustable.length){const x=adjustable[0];messages.push({c:'固定支出',v:+x.amount,text:`固定支出中「${escapeHtml(x.name)}」被標成可調整，目前 ${fmt(x.amount)}。如果這筆不是必要支出，可以再評估是否要降低。`})}
+  if(!messages.length) messages.push({c:'本月狀況',v:0,text:'目前記錄多集中在必要、醫療或孩子相關項目，暫時沒有很明顯適合直接刪減的支出。可以繼續記帳，資料越完整判斷越準。'});
+  advice.innerHTML=messages.slice(0,4).map((x,i)=>`<div class="diagAdviceItem ${i===0?'priority':''}"><span>${i===0?'優先看看':'再檢查'}</span><b>${escapeHtml(x.c)}</b><p>${x.text}</p></div>`).join('');
+}
 function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=dailyBudget(),sv=saved(),pct=db>0?Math.min(100,Math.max(0,spent()/db*100)):0;
  $('#month').textContent=`${cur.y}/${cur.m}`;$('#husband').value=data.income.husband;$('#wife').value=data.income.wife;$('#other').value=data.income.other;
  $('#heroAvail').textContent=fmt(Math.max(0,a));$('#heroSub').textContent=`收入 ${fmt(inc())}・固定支出 ${fmt(fixed())}・已花 ${fmt(spent())}`;$('#meterFill').style.width=pct+'%';
@@ -158,7 +189,7 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
  $('#incomeTotal').textContent=fmt(inc());$('#remainSummary').textContent=fmt(baseAvailable());$('#fixedTotal').textContent=fmt(fixed());$('#doneSummary').textContent=data.finished?'✓ 已完成':'待確認';$('#availIncome').textContent=fmt(inc());$('#availFixed').textContent=fmt(fixed());$('#suggestedSavings').textContent=fmt(suggestedSavings());$('#availSaved').textContent=fmt(sv);$('#availSpend').textContent=fmt(baseAvailable());
  
  $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=fmt(Math.max(0,r));$('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fSaved').textContent=fmt(sv);$('#savedAmount').value=sv;
- $('#dSpent').textContent=fmt(spent());$('#diagIncome').textContent=fmt(inc());$('#diagFixed').textContent=fmt(fixed());$('#diagSpent').textContent=fmt(spent());$('#diagAvail').textContent=fmt(Math.max(0,a));$('#diagMsg').innerHTML=a>=0?`扣除固定支出、已存入儲蓄與每日開銷後，目前還有 <b>${fmt(a)}</b> 可以使用。`:`每日開銷已超過設定的日常額度 <b>${fmt(Math.abs(a))}</b>。`;
+ $('#dSpent').textContent=fmt(spent());$('#diagIncome').textContent=fmt(inc());$('#diagFixed').textContent=fmt(fixed());$('#diagSpent').textContent=fmt(allSpent());$('#diagAvail').textContent=fmt(Math.max(0,a));$('#diagMsg').innerHTML=a>=0?`扣除固定支出、已存入儲蓄與本月生活開銷後，目前還有 <b>${fmt(a)}</b> 可以使用。`:`本月生活開銷已超過設定額度 <b>${fmt(Math.abs(a))}</b>。`;renderDiagnosis();
  expenses();setStep(data.step||1);renderCards();renderLoans()}
 
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
