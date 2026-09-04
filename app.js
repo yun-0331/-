@@ -64,9 +64,26 @@ function cardEstimate(cardId){
   const extra=cardId==='ctbc'?(+cardSettings.ctbcCarry||0)+ctbcInterest:cardId==='fubon'?(+cardSettings.fubonCarry||0)+fubonInterest+fubonInstallmentDue():0;
   return Math.max(0,newSpend+extra);
 }
+function ceil100(n){return Math.ceil(Math.max(0,n)/100)*100}
+function ctbcAutoMinDue(){
+  const newSpend=txSum(statementTxs('ctbc'));
+  const carry=Math.max(0,+cardSettings.ctbcCarry||0);
+  const interest=est30DayInterest(carry,cardSettings.ctbcApr);
+  const total=carry+newSpend+interest;
+  if(total<=0)return 0;
+  // 預估：當期新增一般消費 10% + 其餘未繳餘額 5% + 預估循環利息，百元進位。
+  // 實際帳單仍可能因入帳日、費用、逾期款、超額、分期等不同。
+  let due=ceil100(newSpend*0.10+carry*0.05+interest);
+  if(total<1000)return Math.round(total);
+  return Math.min(total,Math.max(1000,due));
+}
+function ctbcDueForNextFixed(){
+  // 若使用者有手動修正，以手動值優先；0 / 空白則使用自動預估。
+  const manual=Math.max(0,+cardSettings.ctbcMinDue||0);
+  return manual>0?manual:ctbcAutoMinDue();
+}
 function cardDueForNextFixed(cardId){
-  // 中信採「最低應繳」；因 GitHub 靜態版無法連銀行帳單，最低應繳由使用者依實際帳單輸入。
-  if(cardId==='ctbc')return Math.max(0,+cardSettings.ctbcMinDue||0);
+  if(cardId==='ctbc')return ctbcDueForNextFixed();
   return cardEstimate(cardId);
 }
 function syncCardsToNextMonth(){
@@ -99,7 +116,10 @@ function renderCards(){
   $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
   const [ny,nm]=nextMonthYM();
   $('#ccSyncMonth').textContent=`${ny}/${nm}`;
-  $('#syncCtbc').textContent=cardSettings.ctbcMinDue>0?fmt(cardSettings.ctbcMinDue):'待輸入';
+  $('#syncCtbc').textContent=fmt(ctbcDueForNextFixed());
+  const autoMin=ctbcAutoMinDue();
+  const autoMinEl=$('#ctbcAutoMinDue'); if(autoMinEl)autoMinEl.textContent=fmt(autoMin);
+  const totalEstEl=$('#ctbcTotalEstimate'); if(totalEstEl)totalEstEl.textContent=fmt(estimates.ctbc);
   $('#syncFubon').textContent=fmt(estimates.fubon);$('#syncYuniFubon').textContent=fmt(estimates.yuni_fubon);$('#syncCathay').textContent=fmt(estimates.cathay);
   syncCardsToNextMonth();
   let filtered=monthItems.filter(x=>cardFilter==='all'||x.card===cardFilter).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.created||0)-(+a.created||0));let el=$('#ccLedger');if(!filtered.length){el.innerHTML='<div class="ccEmpty">這個月還沒有信用卡消費；請從「今日開銷」新增。</div>';return}el.innerHTML=filtered.map(x=>`<div class="ccTx readOnly"><div class="ccTxDate">${shortDate(x.date)}</div><div class="ccTxInfo"><b>${escapeHtml(x.note||x.category||'刷卡')}</b><small>${escapeHtml(CARDS[x.card]?.name||'信用卡')}・${escapeHtml(x.category||'其他')}</small></div><div class="ccTxAmount">${fmt(x.amount)}</div></div>`).join('')

@@ -64,7 +64,7 @@
   <section class="ccPanel debtPanel">
     <div class="ccPanelHead"><div><small>既有信用卡帳務</small><h2>舊帳與分期另外列入</h2></div></div>
     <div class="debtGrid">
-      <div class="debtItem ctbcDebt"><div class="debtItemHead"><b>中國信託</b><span>循環／未繳餘額</span></div><label>本期尚未繳款餘額<input id="ctbcCarry" type="number" min="0" inputmode="numeric"></label><label class="minDueInput">本期最低應繳金額<input id="ctbcMinDue" type="number" min="0" inputmode="numeric" placeholder="依帳單輸入"></label><div class="rateRow"><span>循環年利率</span><b>15%</b><small>30 天利息預估 <strong id="ctbcInterestView">$0</strong></small></div><p>中信同步到下個月固定支出時，只抓「最低應繳金額」。GitHub 靜態版無法直接讀取銀行帳單，因此請依實際帳單填入最低應繳。</p></div>
+      <div class="debtItem ctbcDebt"><div class="debtItemHead"><b>中國信託</b><span>循環／未繳餘額</span></div><label>本期尚未繳款餘額<input id="ctbcCarry" type="number" min="0" inputmode="numeric"></label><div class="ctbcEstimateBox"><div><span>未繳餘額＋新刷卡＋預估利息</span><b id="ctbcTotalEstimate">$0</b></div><div><span>自動預估最低應繳</span><b id="ctbcAutoMinDue">$0</b></div></div><label class="minDueInput">手動修正最低應繳（選填）<input id="ctbcMinDue" type="number" min="0" inputmode="numeric" placeholder="留空／0＝使用自動預估"></label><div class="rateRow"><span>循環年利率</span><b>15%</b><small>30 天利息預估 <strong id="ctbcInterestView">$0</strong></small></div><p>系統先用未繳餘額、新刷卡與預估利息計算最低應繳，並自動帶入下個月固定支出。實際帳單若不同，再於「手動修正」輸入實際最低應繳即可。</p></div>
       <div class="debtItem"><div class="debtItemHead"><b>台北富邦</b><span>循環＋既有分期</span></div><label>循環未繳餘額<input id="fubonCarry" type="number" min="0" inputmode="numeric"></label><div class="rateRow"><span>循環年利率</span><b>10.88%</b><small>30 天利息預估 <strong id="fubonInterestView">$0</strong></small></div><div class="installRows"><div><label>每期金額<input id="fubonInst1Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst1Count" type="number" min="0" inputmode="numeric"></label></div><div><label>每期金額<input id="fubonInst2Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst2Count" type="number" min="0" inputmode="numeric"></label></div></div><p>本期只計入各分期的一期；循環利息以約 30 天粗估，實際以銀行帳單為準。</p></div>
     </div>
     <div class="debtSummary"><span>中信未繳 <b id="ctbcCarryView">$0</b></span><span>中信利息預估 <b id="ctbcInterestSummary">$0</b></span><span>富邦循環 <b id="fubonCarryView">$0</b></span><span>富邦本期分期 <b id="fubonInstallmentDue">$0</b></span></div>
@@ -73,7 +73,7 @@
   <section class="ccPanel cardSyncPanel">
     <div class="ccPanelHead"><div><small>自動帶入下月預算</small><h2>同步到 <span id="ccSyncMonth">—</span> 固定支出</h2></div></div>
     <div class="cardSyncRows">
-      <div><span>中國信託<small>抓最低應繳</small></span><b id="syncCtbc">待輸入</b></div>
+      <div><span>中國信託<small>自動預估最低應繳</small></span><b id="syncCtbc">待輸入</b></div>
       <div><span>台北富邦<small>抓下期帳單預估</small></span><b id="syncFubon">$0</b></div>
       <div><span>芋泥台北富邦<small>抓下期帳單預估</small></span><b id="syncYuniFubon">$0</b></div>
       <div><span>國泰世華<small>抓下期帳單預估</small></span><b id="syncCathay">$0</b></div>
