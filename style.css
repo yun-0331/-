@@ -46,3 +46,13 @@ nav.nav4 button small{font-size:10px;line-height:1.1}
 
 nav.nav5{grid-template-columns:repeat(5,1fr)}nav.nav5 button>svg{display:block;width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important;overflow:visible;fill:none!important;stroke:currentColor!important;stroke-width:1.7!important;stroke-linecap:round;stroke-linejoin:round}nav.nav5 button small{font-size:9px}
 @media(max-width:380px){nav.nav5 button small{font-size:8px}.childFunds{grid-template-columns:1fr}.loanFormGrid{grid-template-columns:1fr}.loanBalances{grid-template-columns:1fr 1fr}.loanHero strong{font-size:27px}}
+
+/* ===== v13：手頭現金移至今日開銷 + 現金來源 + 循環利率 ===== */
+.cashPocketCard{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;margin-bottom:12px;border:1px solid #eadfe5;border-radius:18px;background:linear-gradient(135deg,#fffaf8,#f7f0fa);box-shadow:var(--shadow)}
+.cashPocketCard>div{min-width:0}.cashPocketCard small{display:block;font-size:10px;font-weight:800;color:#9a6ca4}.cashPocketCard strong{display:block;margin:2px 0 3px;font-size:23px;color:#76557f}.cashPocketCard span{display:block;font-size:8px;line-height:1.4;color:var(--muted)}
+.cashPocketCard label{width:118px;flex:none;font-size:9px;color:#81767b}.cashPocketCard input{height:38px;margin-top:5px;padding:0 9px;border-radius:11px;font-size:12px;background:#fff}
+.cashSourceWrap{margin-top:9px}.cashSourceWrap.hidden{display:none}.cashSourceTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:4px;border:1px solid #eadfe5;border-radius:14px;background:#f8f1f5}.cashSourceTabs button{height:39px;border:0;border-radius:11px;background:transparent;color:#81747c;font-size:11px;font-weight:800;cursor:pointer}.cashSourceTabs button.active{background:#fff;color:#80558c;box-shadow:0 3px 10px rgba(104,78,94,.08)}.cashSourceWrap>small{display:block;margin:6px 2px 0;font-size:8px;line-height:1.45;color:#9a9297}
+.rateRow{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:7px;margin:9px 0;padding:9px 10px;border-radius:11px;background:#f8f2f6}.rateRow>span{font-size:9px;color:#8a7f85}.rateRow>b{font-size:13px;color:#80558c}.rateRow>small{text-align:right;font-size:8px;color:#9a9297}.rateRow strong{font-size:10px;color:#76557f}
+.loanHero{justify-content:flex-start}.loanHero>div:first-child{width:100%}
+@media(max-width:380px){.cashPocketCard{align-items:stretch;flex-direction:column}.cashPocketCard label{width:100%}.rateRow{grid-template-columns:auto auto}.rateRow>small{grid-column:1/-1;text-align:left}}
+.dailySummary.dailySummary4{grid-template-columns:1fr 1fr}.dailySummary.dailySummary4 div{min-height:58px;display:flex;flex-direction:column;justify-content:center}

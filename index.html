@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=11.0.0">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=13.0.0">
 <title>莉芸家預算</title>
 </head>
 <body><div class="app">
@@ -55,7 +55,7 @@
       <div class="ccFoot">下期帳單預估 <b id="yuni_fubonEstimate">$0</b></div>
     </section>
     <section class="ccStatement cathay">
-      <div class="ccTitle"><div class="ccLogo">國泰</div><div><small>國泰銀行</small><h2 id="cathayBill">$0</h2></div><span id="cathayStatus" class="ccStatus future">待設定</span></div>
+      <div class="ccTitle"><div class="ccLogo">國泰</div><div><small>國泰世華</small><h2 id="cathayBill">$0</h2></div><span id="cathayStatus" class="ccStatus future">待設定</span></div>
       <div class="ccMeta"><label class="closeDayLabel">結帳日 <input id="cathayCloseDay" type="number" min="1" max="31" inputmode="numeric" placeholder="填日"></label><span id="cathayCycle">—</span></div>
       <div class="ccFoot">下期帳單預估 <b id="cathayEstimate">$0</b></div>
     </section>
@@ -64,10 +64,10 @@
   <section class="ccPanel debtPanel">
     <div class="ccPanelHead"><div><small>既有信用卡帳務</small><h2>舊帳與分期另外列入</h2></div></div>
     <div class="debtGrid">
-      <div class="debtItem ctbcDebt"><div class="debtItemHead"><b>中國信託</b><span>循環／未繳餘額</span></div><label>本期尚未繳款餘額<input id="ctbcCarry" type="number" min="0" inputmode="numeric"></label><p>下期預估＝未繳餘額＋本結帳週期新刷卡；銀行實際帳單可能另有循環利息或費用。</p></div>
-      <div class="debtItem"><div class="debtItemHead"><b>台北富邦</b><span>既有分期</span></div><div class="installRows"><div><label>每期金額<input id="fubonInst1Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst1Count" type="number" min="0" inputmode="numeric"></label></div><div><label>每期金額<input id="fubonInst2Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst2Count" type="number" min="0" inputmode="numeric"></label></div></div><p>本期只計入各分期的一期；剩餘期數可自行更新。</p></div>
+      <div class="debtItem ctbcDebt"><div class="debtItemHead"><b>中國信託</b><span>循環／未繳餘額</span></div><label>本期尚未繳款餘額<input id="ctbcCarry" type="number" min="0" inputmode="numeric"></label><div class="rateRow"><span>循環年利率</span><b>15%</b><small>30 天利息預估 <strong id="ctbcInterestView">$0</strong></small></div><p>下期預估＝未繳餘額＋約 30 天循環利息＋本結帳週期新刷卡。實際利息依銀行逐日計息與入帳日為準。</p></div>
+      <div class="debtItem"><div class="debtItemHead"><b>台北富邦</b><span>循環＋既有分期</span></div><label>循環未繳餘額<input id="fubonCarry" type="number" min="0" inputmode="numeric"></label><div class="rateRow"><span>循環年利率</span><b>10.88%</b><small>30 天利息預估 <strong id="fubonInterestView">$0</strong></small></div><div class="installRows"><div><label>每期金額<input id="fubonInst1Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst1Count" type="number" min="0" inputmode="numeric"></label></div><div><label>每期金額<input id="fubonInst2Amount" type="number" min="0" inputmode="numeric"></label><label>剩餘期數<input id="fubonInst2Count" type="number" min="0" inputmode="numeric"></label></div></div><p>本期只計入各分期的一期；循環利息以約 30 天粗估，實際以銀行帳單為準。</p></div>
     </div>
-    <div class="debtSummary"><span>中信舊帳 <b id="ctbcCarryView">$0</b></span><span>富邦本期分期 <b id="fubonInstallmentDue">$0</b></span></div>
+    <div class="debtSummary"><span>中信未繳 <b id="ctbcCarryView">$0</b></span><span>中信利息預估 <b id="ctbcInterestSummary">$0</b></span><span>富邦循環 <b id="fubonCarryView">$0</b></span><span>富邦本期分期 <b id="fubonInstallmentDue">$0</b></span></div>
   </section>
 
   <section class="ccPanel ccInfoOnly"><div class="ccPanelHead"><div><small>消費登錄方式</small><h2>從「今日開銷」統一新增</h2></div></div><p class="ccEntryHint">付款方式選「信用卡」後，可選中國信託、台北富邦、芋泥台北富邦或國泰銀行。信用卡頁只看明細與帳單，不重複新增。</p></section>
@@ -77,11 +77,12 @@
     <div class="ccFilters"><button data-cardfilter="all" class="active">全部</button><button data-cardfilter="ctbc">中信</button><button data-cardfilter="fubon">富邦</button><button data-cardfilter="yuni_fubon">芋泥富邦</button><button data-cardfilter="cathay">國泰</button></div>
     <div id="ccLedger" class="ccLedger"></div>
   </section>
-  <p class="ccHint">※ 結帳預估依消費日期與結帳日計算；國泰請先填結帳日。銀行實際帳單仍可能因入帳日、退款、分期、利息等不同。</p>
+  <p class="ccHint">※ 結帳預估依消費日期與各卡結帳日計算；循環利息採約 30 天概算。銀行實際帳單仍可能因入帳日、退款、分期、逐日計息與其他費用不同。</p>
 </section>
 
 <section id="quick" class="view">
-  <section class="dailyHero"><div><small>今日開銷</small><strong id="dailyPageAvail">$0</strong><span>本月目前可用</span></div><div class="dailyHeroMeta"><b id="dailyPageSpent">$0</b><small>本月已花</small></div></section>
+  <section class="dailyHero"><div><small>今日開銷</small><strong id="dailyPageAvail">$0</strong><span>當月生活費目前可用</span></div><div class="dailyHeroMeta"><b id="dailyPageSpent">$0</b><small>本月總開銷</small></div></section>
+  <section class="cashPocketCard"><div><div><small>手頭上現金</small><strong id="quickCashView">$0</strong></div><span>從借款週轉進來的現金也會同步到這裡</span></div><label>調整現金<input id="quickCashOnHand" type="number" min="0" inputmode="numeric"></label></section>
   <section class="dailyPageCard">
     <div class="dailyPageHead"><div><small>新增日常支出</small><h2>今日開銷</h2></div><span id="dailyToday">—</span></div>
     <div class="quickForm standalone">
@@ -93,14 +94,19 @@
           <button type="button" data-method="cash" class="active">現金</button>
           <button type="button" data-method="credit">信用卡</button>
         </div>
-        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰銀行</option></select></label>
+        <div id="qCashSourceWrap" class="cashSourceWrap">
+          <span class="fieldTitle">現金從哪裡扣？</span>
+          <div class="cashSourceTabs" id="cashSourceTabs"><button type="button" data-source="living" class="active">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button></div>
+          <small id="cashSourceHint">這筆會從「本月目前可用」扣除。</small>
+        </div>
+        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option></select></label>
       </div>
       <button id="saveQ" class="dailySave">＋ 加入今日開銷</button>
     </div>
   </section>
   <section class="dailyPageCard">
     <div class="dailyPageHead"><div><small>本月每日開銷明細</small><h2 id="dailyListTitle">2026/9 開銷紀錄</h2></div><b id="dSpent">$0</b></div>
-    <div class="dailySummary"><div><small>日常可用額度</small><b id="dailyBudget">$0</b></div><div><small>本月已花</small><b id="dailySpent">$0</b></div><div><small>剩餘可用</small><b id="dailyAvailable">$0</b></div></div>
+    <div class="dailySummary dailySummary4"><div><small>當月生活費額度</small><b id="dailyBudget">$0</b></div><div><small>生活費已花</small><b id="dailySpent">$0</b></div><div><small>手頭現金花費</small><b id="pocketSpent">$0</b></div><div><small>生活費剩餘</small><b id="dailyAvailable">$0</b></div></div>
     <div class="dailyMeter"><div id="dailyMeterFill"></div></div>
     <div id="ledger"></div>
   </section>
@@ -108,12 +114,10 @@
 <section id="loans" class="view">
   <section class="loanHero">
     <div><small>目前尚欠借款</small><strong id="loanTotal">$32,000</strong><span>姐姐＋大寶／二寶／三寶週轉借款</span></div>
-    <div class="loanCash"><small>手頭上現金</small><b id="cashOnHandView">$0</b></div>
   </section>
 
   <section class="loanPanel">
-    <div class="loanPanelHead"><div><small>現金與可週轉資金</small><h2>手頭資金</h2></div></div>
-    <label class="cashInput">手頭上現金<input id="cashOnHand" type="number" min="0" inputmode="numeric"></label>
+    <div class="loanPanelHead"><div><small>孩子戶頭可週轉資金</small><h2>可週轉餘額</h2></div></div>
     <div class="childFunds">
       <label><span>大寶戶頭</span><input id="fundBig" type="number" min="0" inputmode="numeric"><small>可週轉餘額</small></label>
       <label><span>二寶戶頭</span><input id="fundSecond" type="number" min="0" inputmode="numeric"><small>可週轉餘額</small></label>
@@ -151,4 +155,4 @@
 <nav class="nav5"><button data-v="budget" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><small>預算</small></button><button data-v="quick"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"/></svg><small>今日開銷</small></button><button data-v="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/></svg><small>信用卡</small></button><button data-v="loans"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4zM7 8V6h10v2M8 13h8M12 10v6"/></svg><small>借款</small></button><button data-v="diag"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7"/></svg><small>診斷</small></button></nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
-<script src="./app.js?v=11.0.0"></script></body></html>
+<script src="./app.js?v=13.0.0"></script></body></html>
