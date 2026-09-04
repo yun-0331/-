@@ -55,7 +55,7 @@
   <section class="stepPanel active" data-panel="3">
     <div class="cardHead"><div><small>步驟 3</small><h2>固定支出分配</h2></div><b id="fixedTotal">$0</b></div>
     <div class="card body">
-      <div id="expenses" class="grid"></div>
+      <div id="categorySummary" class="categorySummary"></div><div id="expenses" class="grid"></div>
       <button id="addExpense" class="soft full">＋ 新增固定支出</button>
     </div>
     <div class="miniSummary">
@@ -100,6 +100,6 @@
 </main>
 <nav><button data-v="news">📣<small>快訊</small></button><button data-v="budget" class="active">👛<small>預算</small></button><button data-v="quick" class="plus">＋<small>快速記帳</small></button><button data-v="diag">▥<small>診斷</small></button><button data-v="more">•••<small>更多</small></button></nav>
 </div>
-<dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
+<dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
 <script src="./app.js"></script>
 </body></html>
