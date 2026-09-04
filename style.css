@@ -11,3 +11,26 @@
 .debtPanel{background:linear-gradient(155deg,#fff,#fffafc)}.debtGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.debtItem{border:1px solid #ede2e6;border-radius:16px;padding:13px;background:#fff}.debtItem.ctbcDebt{background:#fffafb}.debtItemHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}.debtItemHead b{font-size:14px}.debtItemHead span{font-size:9px;color:#8e6680;background:#f7edf2;border-radius:99px;padding:5px 8px}.debtItem p{font-size:9px;color:#9a9297;line-height:1.55;margin:8px 0 0}.installRows{display:grid;gap:8px}.installRows>div{display:grid;grid-template-columns:1.5fr .8fr;gap:8px}.debtSummary{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.debtSummary span{flex:1;min-width:180px;padding:10px 12px;border-radius:12px;background:#f8f2f6;color:#7c7077;font-size:10px}.debtSummary b{font-size:14px;color:#654f5d;margin-left:4px}
 .nav4 .plus{all:unset}
 @media(max-width:620px){.debtGrid{grid-template-columns:1fr}.dailyHero{padding:16px}.dailyHero strong{font-size:28px}.dailySummary{gap:6px}.dailySummary b{font-size:13px}}
+
+/* ===== v9：電腦版固定採手機版寬度 + 修正底部分頁 ===== */
+html{background:#f6f1ee}
+body{min-height:100vh;padding-bottom:94px}
+.app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:var(--bg);box-shadow:0 0 34px rgba(72,51,61,.08)}
+header{max-width:430px;margin:0 auto}
+main{padding:13px 12px 30px}
+.hero{padding:15px;gap:12px}.hero strong{font-size:29px}.meter{width:105px}
+.steps{gap:6px}.steps button{padding:10px 4px}.steps span{width:33px;height:33px}.steps b{font-size:12px}.steps small{font-size:9px}
+.cardHead h2{font-size:19px}.body,.panel{padding:15px}.three{grid-template-columns:1fr}
+.categorySummary{grid-template-columns:repeat(2,1fr)}
+.expense{grid-template-columns:minmax(0,1fr) 92px 28px}
+.ccGrid{grid-template-columns:1fr}.debtGrid{grid-template-columns:1fr}.cardHero{padding:16px}.cardHero strong{font-size:28px}.ccStatement{padding:14px}
+.dailyHero{padding:16px}.dailyHero strong{font-size:28px}
+nav,nav.nav4{left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:76px;grid-template-columns:repeat(4,1fr);padding:0 4px env(safe-area-inset-bottom);background:rgba(255,255,255,.98);box-shadow:0 -7px 22px rgba(72,51,61,.06);z-index:9999}
+nav button,nav.nav4 button{min-width:0;min-height:64px;position:relative;z-index:1;cursor:pointer;pointer-events:auto}
+nav.nav4 button>svg{display:block;width:21px!important;height:21px!important;max-width:21px!important;max-height:21px!important;overflow:visible;fill:none!important;stroke:currentColor!important;stroke-width:1.7!important}
+nav.nav4 button small{font-size:10px;line-height:1.1}
+.view{display:none!important}.view.active{display:block!important}
+/* 防止舊版殘留的今日開銷卡出現在預算頁 */
+#budget>.dailyCard,#budget>.dailyDetails,#budget>.quickForm{display:none!important}
+@media(min-width:431px){body{padding-left:0;padding-right:0}.app{border-left:1px solid #eee3e1;border-right:1px solid #eee3e1}}
+@media(max-width:390px){.adviceGrid{grid-template-columns:1fr}.dailySummary{gap:5px}.dailySummary b{font-size:13px}}

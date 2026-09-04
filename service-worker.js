@@ -1,5 +1,18 @@
-const CACHE='liyunjia-v8';
-const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
-self.addEventListener('activate',e=>{e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()]))});
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{let copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))))});
+const CACHE='liyunjia-v9-0-1';
+const CORE=['./index.html?v=9.0.1','./style.css?v=9.0.1','./app.js?v=9.0.1','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})))});
+self.addEventListener('activate',e=>{e.waitUntil((async()=>{for(const k of await caches.keys())if(k!==CACHE)await caches.delete(k);await self.clients.claim()})())});
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
+  const u=new URL(e.request.url);
+  if(u.origin!==location.origin)return;
+  e.respondWith((async()=>{
+    try{
+      const fresh=await fetch(e.request,{cache:'no-store'});
+      if(fresh&&fresh.ok){const c=await caches.open(CACHE);c.put(e.request,fresh.clone()).catch(()=>{});}
+      return fresh;
+    }catch(err){
+      return (await caches.match(e.request)) || (await caches.match('./index.html?v=9.0.1')) || Response.error();
+    }
+  })());
+});

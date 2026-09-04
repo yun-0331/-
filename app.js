@@ -79,7 +79,7 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
 $('#bufferTarget').onchange=()=>{data.bufferTarget=Math.max(0,+$('#bufferTarget').value||0);data.finished=false;save()};
-$('#saveQ').onclick=()=>{let amount=+$('#qAmount').value||0;if(amount<=0){alert('請輸入開銷金額');$('#qAmount').focus();return}data.ledger.push({amount,category:$('#qCategory').value,method:'現金',note:$('#qNote').value.trim(),date:new Date().toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})});$('#qAmount').value='';$('#qNote').value='';data.finished=false;save()};
+$('#saveQ').onclick=()=>{let amount=+$('#qAmount').value||0;if(amount<=0){alert('請輸入開銷金額');$('#qAmount').focus();return}data.ledger.push({amount,category:$('#qCategory').value,method:'現金',note:$('#qNote').value.trim(),date:(new Date().getFullYear()===cur.y&&new Date().getMonth()+1===cur.m?new Date().toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}):`${cur.m}/1`)});$('#qAmount').value='';$('#qNote').value='';data.finished=false;save()};
 $('#finish').onclick=()=>{data.finished=true;data.step=4;save();alert('本月預算已完成 ✓')};$('#addExpense').onclick=()=>$('#dlg').showModal();$('#eSave').onclick=e=>{let name=$('#eName').value.trim(),amount=+$('#eAmount').value||0;if(!name||amount<=0){e.preventDefault();return alert('請輸入名稱與金額')}data.expenses.push({name,amount,category:$('#eCategory').value});data.finished=false;$('#eName').value='';$('#eAmount').value='';save()};
 // 信用卡表單
 function defaultCardDate(){let now=new Date(),ym=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m?[cur.y,cur.m,now.getDate()]:[cur.y,cur.m,1];return iso(...ym)}
@@ -90,7 +90,22 @@ $('#saveCard').onclick=()=>{let amount=+$('#ccAmount').value||0,date=$('#ccDate'
 $$('.ccFilters button').forEach(b=>b.onclick=()=>{cardFilter=b.dataset.cardfilter;$$('.ccFilters button').forEach(x=>x.classList.toggle('active',x===b));renderCards()});
 ['ctbcCarry','fubonInst1Amount','fubonInst1Count','fubonInst2Amount','fubonInst2Count'].forEach(id=>$('#'+id).onchange=()=>{cardSettings[id]=Math.max(0,+$('#'+id).value||0);saveCardSettings()});
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=loadMonth();render()};$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
-function showView(v){$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button').forEach(x=>x.classList.remove('active'));$('#'+v).classList.add('active');$$('nav button').find(x=>x.dataset.v===v)?.classList.add('active')}
-$$('nav button[data-v]').forEach(b=>b.onclick=()=>showView(b.dataset.v));
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
+function showView(v){
+  const target=document.getElementById(v); if(!target)return;
+  $$('.view').forEach(x=>x.classList.remove('active'));
+  $$('nav button[data-v]').forEach(x=>x.classList.remove('active'));
+  target.classList.add('active');
+  const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v); if(btn)btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'instant'});
+  if(v==='cards')renderCards(); if(v==='quick')ledger();
+}
+$$('nav button[data-v]').forEach(b=>{
+  b.type='button';
+  b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)});
+});
+// v9：強制使用新版快取，避免 GitHub Pages 混到舊版 HTML/CSS/JS
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{
+  try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=9.0.1'))await r.unregister()}}catch(e){}
+  try{await navigator.serviceWorker.register('./service-worker.js?v=9.0.1',{updateViaCache:'none'})}catch(e){}
+})}
 render();
