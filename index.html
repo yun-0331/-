@@ -1,112 +1,55 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#F8F2EE">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css">
 <title>莉芸家預算</title>
 </head>
-<body>
-<div class="app">
-<header>
-  <div><h1>莉芸家預算</h1><small>家庭財務導航</small></div>
-  <div class="month"><button id="prev">‹</button><b id="month">2026/9</b><button id="next">›</button></div>
-</header>
+<body><div class="app">
+<header><div><h1>莉芸家預算</h1><small>家庭財務導航</small></div><div class="month"><button id="prev">‹</button><b id="month">2026/9</b><button id="next">›</button></div></header>
 <main>
 <section id="budget" class="view active">
-  <div class="hero">
-    <div><small>本月目前可用</small><strong id="heroAvail">$0</strong><span id="heroSub">完成收入與固定支出後會自動計算</span></div>
-    <div class="meter"><div id="meterFill"></div></div>
-  </div>
+  <section class="hero"><div><small>本月目前可用</small><strong id="heroAvail">$0</strong><span id="heroSub">完成收入與固定支出後會自動計算</span></div><div class="meter"><div id="meterFill"></div></div></section>
+
   <section class="dailyCard">
     <div class="dailyHead"><div><small>每日開銷明細</small><h2>今天到現在花了多少？</h2></div><b id="dailyRemain">$0</b></div>
-    <div class="dailyStats"><div><small>本月日常額度</small><b id="dailyBudget">$0</b></div><div><small>已花費</small><b id="dailySpent">$0</b></div><div><small>剩餘可用</small><b id="dailyAvailable">$0</b></div></div>
+    <div class="dailyStats"><div><small>日常可用額度</small><b id="dailyBudget">$0</b></div><div><small>本月已花</small><b id="dailySpent">$0</b></div><div><small>現在還能用</small><b id="dailyAvailable">$0</b></div></div>
     <div class="dailyMeter"><div id="dailyMeterFill"></div></div>
     <div id="dailyDetails" class="dailyDetails"></div>
-    <button class="dailyAdd" data-open-quick>＋ 記一筆今日開銷</button>
+    <div id="quickForm" class="quickForm hidden">
+      <div class="quickTitle">記一筆今日開銷</div>
+      <div class="quickGrid"><label>金額<input id="qAmount" type="number" min="1" inputmode="numeric" placeholder="例如 120"></label><label>分類<select id="qCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label></div>
+      <label>備註<input id="qNote" placeholder="例如：午餐"></label>
+      <div class="quickActions"><button id="cancelQuick" class="soft">取消</button><button id="saveQ" class="primarySmall">儲存這筆</button></div>
+    </div>
+    <button id="openQuick" class="dailyAdd">＋ 記一筆今日開銷</button>
   </section>
+
   <div class="steps" id="steps">
     <button data-step="1"><span>1</span><b>收入</b><small id="sIncome">$0</small></button>
     <button data-step="2"><span>2</span><b>看建議</b><small id="sRemain">$0</small></button>
-    <button data-step="3" class="now"><span>3</span><b>分配</b><small id="sFixed">$0</small></button>
+    <button data-step="3"><span>3</span><b>分配</b><small id="sFixed">$0</small></button>
     <button data-step="4"><span>4</span><b>完成</b><small id="sDone">待確認</small></button>
   </div>
 
-  <section class="stepPanel" data-panel="1">
-    <div class="cardHead"><div><small>步驟 1</small><h2>先盤點本月收入</h2></div><b id="incomeTotal">$0</b></div>
-    <div class="card body three">
-      <label>先生薪資<input id="husband" type="number" inputmode="numeric"></label>
-      <label>太太薪資<input id="wife" type="number" inputmode="numeric"></label>
-      <label>其他收入／補貼<input id="other" type="number" inputmode="numeric"></label>
-    </div>
-    <button class="nextStep" data-next="2">下一步：看建議 →</button>
-  </section>
+  <section class="stepPanel" data-panel="1"><div class="cardHead"><div><small>步驟 1</small><h2>先盤點本月收入</h2></div><b id="incomeTotal">$0</b></div><div class="card body three">
+    <label>先生薪資<input id="husband" type="number" inputmode="numeric"></label><label>太太薪資<input id="wife" type="number" inputmode="numeric"></label><label>其他收入／補貼<input id="other" type="number" inputmode="numeric"></label>
+  </div><button class="nextStep" data-next="2">下一步：看建議 <span>→</span></button></section>
 
-  <section class="stepPanel" data-panel="2">
-    <div class="cardHead"><div><small>步驟 2</small><h2>先看本月建議</h2></div><b id="remainSummary">$0</b></div>
-    <div class="adviceGrid">
-      <div class="advice"><small>固定支出占比</small><strong id="fixedRate">0%</strong><span id="fixedHint">依目前設定計算</span></div>
-      <div class="advice"><small>固定支出後剩餘</small><strong id="postFixed">$0</strong><span>可留給日常與緩衝</span></div>
-      <div class="advice"><small>建議緩衝金</small><strong id="bufferSuggest">$0</strong><span>以剩餘金額的 20% 計算</span></div>
-      <div class="advice"><small>建議日常上限</small><strong id="spendSuggest">$0</strong><span>剩餘扣除緩衝後</span></div>
-    </div>
-    <div id="adviceMsg" class="note"></div>
-    <button class="nextStep" data-next="3">下一步：開始分配 →</button>
-  </section>
+  <section class="stepPanel" data-panel="2"><div class="cardHead"><div><small>步驟 2</small><h2>先看本月建議</h2></div><b id="remainSummary">$0</b></div><div class="adviceGrid">
+    <div class="advice"><small>固定支出占比</small><strong id="fixedRate">0%</strong><span id="fixedHint">依目前設定計算</span></div><div class="advice"><small>固定支出後剩餘</small><strong id="postFixed">$0</strong><span>可留給日常與緩衝</span></div><div class="advice"><small>建議緩衝金</small><strong id="bufferSuggest">$0</strong><span>剩餘金額的 20%</span></div><div class="advice"><small>建議日常上限</small><strong id="spendSuggest">$0</strong><span>剩餘扣除緩衝後</span></div>
+  </div><div id="adviceMsg" class="note"></div><button class="nextStep" data-next="3">下一步：開始分配 <span>→</span></button></section>
 
-  <section class="stepPanel active" data-panel="3">
-    <div class="cardHead"><div><small>步驟 3</small><h2>固定支出分配</h2></div><b id="fixedTotal">$0</b></div>
-    <div class="card body">
-      <div id="categorySummary" class="categorySummary"></div><div id="expenses" class="grid"></div>
-      <button id="addExpense" class="soft full">＋ 新增固定支出</button>
-    </div>
-    <div class="miniSummary">
-      <div><small>收入</small><b id="miniIncome">$0</b></div>
-      <div><small>固定支出</small><b id="miniFixed">$0</b></div>
-      <div><small>剩餘</small><b id="miniRemain">$0</b></div>
-    </div>
-    <button class="nextStep" data-next="4">下一步：確認完成 →</button>
-  </section>
+  <section class="stepPanel" data-panel="3"><div class="cardHead"><div><small>步驟 3</small><h2>固定支出分配</h2></div><b id="fixedTotal">$0</b></div><div class="card body"><div id="categorySummary" class="categorySummary"></div><div id="expenses" class="expenseList"></div><button id="addExpense" class="soft full">＋ 新增固定支出</button></div><div class="miniSummary"><div><small>收入</small><b id="miniIncome">$0</b></div><div><small>固定支出</small><b id="miniFixed">$0</b></div><div><small>剩餘</small><b id="miniRemain">$0</b></div></div><button class="nextStep" data-next="4">下一步：確認完成 <span>→</span></button></section>
 
-  <section class="stepPanel" data-panel="4">
-    <div class="cardHead"><div><small>步驟 4</small><h2>確認本月預算</h2></div><b id="doneSummary">待確認</b></div>
-    <div class="finishCard">
-      <div><small>本月收入</small><strong id="fIncome">$0</strong></div>
-      <div><small>固定支出</small><strong id="fFixed">$0</strong></div>
-      <div><small>日常可用</small><strong id="fSpend">$0</strong></div>
-      <div><small>建議緩衝</small><strong id="fBuffer">$0</strong></div>
-    </div>
-    <label class="bufferEdit">我想保留的緩衝金<input id="bufferTarget" type="number" inputmode="numeric" min="0"></label>
-    <button id="finish" class="finishBtn">✓ 完成本月預算</button>
-    <p class="hint center">完成後仍可回來修改；快速記帳會從「日常可用」中扣除。</p>
-  </section>
+  <section class="stepPanel" data-panel="4"><div class="cardHead"><div><small>步驟 4</small><h2>確認本月預算</h2></div><b id="doneSummary">待確認</b></div><div class="finishCard"><div><small>本月收入</small><strong id="fIncome">$0</strong></div><div><small>固定支出</small><strong id="fFixed">$0</strong></div><div><small>日常可用</small><strong id="fSpend">$0</strong></div><div><small>保留緩衝</small><strong id="fBuffer">$0</strong></div></div><label class="bufferEdit">我想保留的緩衝金<input id="bufferTarget" type="number" inputmode="numeric" min="0"></label><button id="finish" class="finishBtn">✓ 完成本月預算</button><p class="hint center">完成後仍可修改；每日開銷會自動從日常可用中扣除。</p></section>
 </section>
 
-<section id="quick" class="view">
-  <div class="panel"><h2>快速記帳</h2>
-    <label>金額<input id="qAmount" type="number" placeholder="0" inputmode="numeric"></label>
-    <div class="two"><label>分類<select id="qCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label><label>付款方式<select id="qMethod"><option>現金</option><option>信用卡</option><option>轉帳</option></select></label></div>
-    <label>備註<input id="qNote" placeholder="例如：午餐"></label>
-    <button id="saveQ">儲存這筆</button>
-  </div>
-  <div class="panel"><div class="panelTitle"><h3>本月記帳</h3><b id="spent">$0</b></div><div id="ledger"></div></div>
-</section>
-
-<section id="diag" class="view">
-  <div class="panel"><h2>本月診斷</h2><div class="stats"><div>家庭收入<b id="dIncome"></b></div><div>固定支出<b id="dFixed"></b></div><div>機動支出<b id="dSpent"></b></div><div>目前可用<b id="dAvail"></b></div></div><div id="diagMsg" class="note"></div></div>
-</section>
-
+<section id="quick" class="view"><div class="panel"><h2>本月每日開銷</h2><div class="stats"><div>本月收入<b id="dIncome">$0</b></div><div>固定支出<b id="dFixed">$0</b></div><div>已記帳<b id="dSpent">$0</b></div><div>目前可用<b id="dAvail">$0</b></div></div><div id="ledger"></div></div></section>
+<section id="diag" class="view"><div class="panel"><h2>本月診斷</h2><div class="stats"><div>家庭收入<b id="diagIncome">$0</b></div><div>固定支出<b id="diagFixed">$0</b></div><div>機動支出<b id="diagSpent">$0</b></div><div>目前可用<b id="diagAvail">$0</b></div></div><div id="diagMsg" class="note"></div></div></section>
 </main>
-<nav>
-  <button data-v="budget" class="active">◉<small>預算</small></button>
-  <button data-v="quick" class="plus">＋<small>快速記帳</small></button>
-  <button data-v="diag">▥<small>診斷</small></button>
-</nav>
+<nav><button data-v="budget" class="active">◉<small>預算</small></button><button id="navQuick" class="plus">＋<small>快速記帳</small></button><button data-v="diag">▥<small>診斷</small></button></nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
-<script src="./app.js"></script>
-</body></html>
+<script src="./app.js"></script></body></html>
