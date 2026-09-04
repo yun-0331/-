@@ -6,7 +6,7 @@ const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
 const catIcon=c=>`<svg class="catIcon" viewBox="0 0 24 24"><path d="${CAT_ICON[c]||CAT_ICON.其他}"/></svg>`;
 const key=(y=cur.y,m=cur.m)=>`liyunjia-${y}-${String(m).padStart(2,'0')}`;
-const fresh=()=>({income:{husband:67000,wife:33000,other:8000},expenses:defaults.map(([name,amount,category])=>({name,amount,category})),ledger:[],finished:false,bufferTarget:null,step:1});
+const fresh=()=>({income:{husband:67000,wife:33000,other:8000},expenses:defaults.map(([name,amount,category])=>({name,amount,category})),ledger:[],incomeLedger:[],finished:false,bufferTarget:null,step:1});
 function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.getItem(key(y,m))||'null')}catch(e){}
   if(!x)x=fresh(); if(!x.income)x.income=fresh().income;
   ['husband','wife','other'].forEach(k=>{if(x.income[k]===undefined||x.income[k]===null)x.income[k]=fresh().income[k]});
@@ -167,12 +167,59 @@ function renderQuickPayChoice(){$$('#payMethodTabs button').forEach(x=>x.classLi
 $$('#payMethodTabs button').forEach(b=>b.onclick=()=>{quickPayMethod=b.dataset.method;renderQuickPayChoice()});
 $$('#cashSourceTabs button').forEach(b=>b.onclick=()=>{quickCashSource=b.dataset.source;$$('#cashSourceTabs button').forEach(x=>x.classList.toggle('active',x===b));$('#cashSourceHint').textContent=quickCashSource==='pocket'?`這筆會從手頭上現金 ${fmt(loans.cash)} 扣除，不重複扣當月生活費。`:'這筆會從「本月目前可用」扣除。'});
 let quickEntryType='expense';
-$$('#entryTypeTabs button').forEach(b=>b.onclick=()=>{quickEntryType=b.dataset.entry;$$('#entryTypeTabs button').forEach(x=>x.classList.toggle('active',x===b));const income=quickEntryType==='income';$('#saveQ').textContent=income?'＋ 加入今日收入':'＋ 加入今日開銷';$('#payMethodTabs').style.display=income?'none':'';$('#qCardWrap').classList.add('hidden');$('#qCashSourceWrap').classList.toggle('hidden',false);$('#qCashSourceWrap .fieldTitle').textContent=income?'收入放到哪裡？':'現金從哪裡扣？';$('#cashSourceHint').textContent=income?(quickCashSource==='pocket'?'這筆收入會增加「手頭上現金」。':'這筆收入會增加「本月目前可用」。'):(quickCashSource==='pocket'?'這筆會從「手頭上現金」扣除。':'這筆會從「本月目前可用」扣除。');});
-$('#saveQ').onclick=()=>{let amount=+$('#qAmount').value||0;if(amount<=0){alert(quickEntryType==='income'?'請輸入收入金額':'請輸入開銷金額');$('#qAmount').focus();return}let category=$('#qCategory').value,note=$('#qNote').value.trim(),now=new Date(),sameMonth=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m,displayDate=sameMonth?now.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}):`${cur.m}/1`;if(quickEntryType==='income'){let destination=quickCashSource==='pocket'?'pocket':'living';if(destination==='pocket'){loans.cash=(+loans.cash||0)+amount;localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.incomeLedger.push({amount,category,note:note||'今日收入',destination,date:displayDate,created:Date.now()})}else if(quickPayMethod==='credit'){let card=$('#qCard').value,date=defaultCardDate(),tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};cardTxs.push(tx);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));data.ledger.push({amount,category,method:CARDS[card].name,note:note||'信用卡消費',date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true,created:Date.now()})}else if(quickCashSource==='pocket'){if(amount>(+loans.cash||0)){alert(`手頭上現金目前只有 ${fmt(loans.cash)}，不足以支付這筆開銷。`);return}loans.cash=Math.max(0,(+loans.cash||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));data.ledger.push({amount,category,method:'現金',fundingSource:'pocket',budgetImpact:false,note:note||'現金開銷',date:displayDate,created:Date.now()})}else{data.ledger.push({amount,category,method:'現金',fundingSource:'living',budgetImpact:true,note:note||'現金開銷',date:displayDate,created:Date.now()})}$('#qAmount').value='';$('#qNote').value='';data.finished=false;save()};
+const expenseCategories=['餐飲','購物','交通','小孩','生活','醫療','其他'];
+const incomeCategories=['薪資','補貼','退款','獎金','現金回饋','其他收入'];
+function setQuickCategories(list){const sel=$('#qCategory');const keep=sel.value;sel.innerHTML=list.map(x=>`<option>${x}</option>`).join('');if(list.includes(keep))sel.value=keep}
+function renderEntryType(){
+  const income=quickEntryType==='income';
+  $$('#entryTypeTabs button').forEach(x=>x.classList.toggle('active',x.dataset.entry===quickEntryType));
+  $('#saveQ').textContent=income?'＋ 加入今日收入':'＋ 加入今日開銷';
+  $('#payMethodTabs').style.display=income?'none':'';
+  $('#qCardWrap').classList.add('hidden');
+  $('#qCashSourceWrap').classList.remove('hidden');
+  $('#qCashSourceWrap .fieldTitle').textContent=income?'收入放到哪裡？':'現金從哪裡扣？';
+  setQuickCategories(income?incomeCategories:expenseCategories);
+  $('#qNote').placeholder=income?'例如：退款、獎金':'例如：午餐';
+  $('#cashSourceHint').textContent=income
+    ?(quickCashSource==='pocket'?'這筆收入會增加「手頭上現金」。':'這筆收入會增加「本月目前可用」。')
+    :(quickCashSource==='pocket'?'這筆會從「手頭上現金」扣除。':'這筆會從「本月目前可用」扣除。');
+}
+$$('#entryTypeTabs button').forEach(b=>b.addEventListener('click',()=>{quickEntryType=b.dataset.entry;renderEntryType()}));
+$('#saveQ').addEventListener('click',()=>{
+  const amount=Number($('#qAmount').value)||0;
+  if(amount<=0){alert(quickEntryType==='income'?'請輸入收入金額':'請輸入開銷金額');$('#qAmount').focus();return}
+  const category=$('#qCategory').value;
+  const note=$('#qNote').value.trim();
+  const now=new Date();
+  const sameMonth=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m;
+  const displayDate=sameMonth?now.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}):`${cur.m}/1`;
+  if(!Array.isArray(data.incomeLedger))data.incomeLedger=[];
+  if(!Array.isArray(data.ledger))data.ledger=[];
+  if(quickEntryType==='income'){
+    const destination=quickCashSource==='pocket'?'pocket':'living';
+    if(destination==='pocket'){
+      loans.cash=(+loans.cash||0)+amount;
+      localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
+    }
+    data.incomeLedger.push({id:'inc-'+Date.now(),amount,category,note:note||category||'今日收入',destination,date:displayDate,created:Date.now()});
+  }else if(quickPayMethod==='credit'){
+    const card=$('#qCard').value,date=defaultCardDate(),tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};
+    cardTxs.push(tx);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));
+    data.ledger.push({amount,category,method:CARDS[card].name,note:note||'信用卡消費',date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true,created:Date.now()});
+  }else if(quickCashSource==='pocket'){
+    if(amount>(+loans.cash||0)){alert(`手頭上現金目前只有 ${fmt(loans.cash)}，不足以支付這筆開銷。`);return}
+    loans.cash=Math.max(0,(+loans.cash||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
+    data.ledger.push({amount,category,method:'現金',fundingSource:'pocket',budgetImpact:false,note:note||'現金開銷',date:displayDate,created:Date.now()});
+  }else{
+    data.ledger.push({amount,category,method:'現金',fundingSource:'living',budgetImpact:true,note:note||'現金開銷',date:displayDate,created:Date.now()});
+  }
+  $('#qAmount').value='';$('#qNote').value='';data.finished=false;save();
+});
+renderEntryType();
 $('#quickCashOnHand').onchange=()=>{loans.cash=Math.max(0,+$('#quickCashOnHand').value||0);saveLoans();render()};
 $('#saveLoan').onclick=addLoanTx;
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=loadMonth();render()};$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=14.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=14.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=18.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=18.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
