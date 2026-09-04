@@ -4,10 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=14.0.0">
-<title>莉芸家預算</title>
+<title>一家五口每月開銷明細</title>
 </head>
 <body><div class="app">
-<header><div><h1>莉芸家預算</h1><small>家庭財務導航</small></div><div class="month"><button id="prev">‹</button><b id="month">2026/9</b><button id="next">›</button></div></header>
+<header><div><h1>一家五口每月開銷明細</h1><small>家庭財務導航</small></div><div class="month"><button id="prev">‹</button><b id="month">2026/9</b><button id="next">›</button></div></header>
 <main>
 <section id="budget" class="view active">
   <section class="hero"><div><small>本月目前可用</small><strong id="heroAvail">$0</strong><span id="heroSub">完成收入與固定支出後會自動計算</span></div><div class="meter"><div id="meterFill"></div></div></section>
@@ -95,7 +95,8 @@
   <section class="dailyHero"><div><small>今日開銷</small><strong id="dailyPageAvail">$0</strong><span>當月生活費目前可用</span></div><div class="dailyHeroMeta"><b id="dailyPageSpent">$0</b><small>本月總開銷</small></div></section>
   <section class="cashPocketCard"><div><div><small>手頭上現金</small><strong id="quickCashView">$0</strong></div><span>從借款週轉進來的現金也會同步到這裡</span></div><label>調整現金<input id="quickCashOnHand" type="number" min="0" inputmode="numeric"></label></section>
   <section class="dailyPageCard">
-    <div class="dailyPageHead"><div><small>新增日常支出</small><h2>今日開銷</h2></div><span id="dailyToday">—</span></div>
+    <div class="dailyPageHead"><div><small>今日收支</small><h2>今日開銷／收入</h2></div><span id="dailyToday">—</span></div>
+    <div class="entryTypeTabs" id="entryTypeTabs"><button type="button" data-entry="expense" class="active">今日支出</button><button type="button" data-entry="income">今日收入</button></div>
     <div class="quickForm standalone">
       <div class="quickGrid"><label>金額<input id="qAmount" type="number" min="1" inputmode="numeric" placeholder="例如 120"></label><label>分類<select id="qCategory"><option>餐飲</option><option>購物</option><option>交通</option><option>小孩</option><option>生活</option><option>醫療</option><option>其他</option></select></label></div>
       <label>備註<input id="qNote" placeholder="例如：午餐"></label>
@@ -116,7 +117,7 @@
     </div>
   </section>
   <section class="dailyPageCard">
-    <div class="dailyPageHead"><div><small>本月每日開銷明細</small><h2 id="dailyListTitle">2026/9 開銷紀錄</h2></div><b id="dSpent">$0</b></div>
+    <div class="dailyPageHead"><div><small>本月每日收支明細</small><h2 id="dailyListTitle">2026/9 收支紀錄</h2></div><b id="dSpent">$0</b></div>
     <div class="dailySummary dailySummary4"><div><small>當月生活費額度</small><b id="dailyBudget">$0</b></div><div><small>生活費已花</small><b id="dailySpent">$0</b></div><div><small>手頭現金花費</small><b id="pocketSpent">$0</b></div><div><small>生活費剩餘</small><b id="dailyAvailable">$0</b></div></div>
     <div class="dailyMeter"><div id="dailyMeterFill"></div></div>
     <div id="ledger"></div>

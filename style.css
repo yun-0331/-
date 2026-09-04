@@ -68,3 +68,5 @@ nav.nav5{grid-template-columns:repeat(5,1fr)}nav.nav5 button>svg{display:block;w
 .cardSyncRows span small{font-weight:500;color:#9b8797;margin-top:3px}
 .cardSyncRows b{color:#8f5b88;font-size:18px;white-space:nowrap}
 .minDueInput{margin-top:8px}
+
+.entryTypeTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px;padding:4px;background:#f6eff4;border-radius:14px}.entryTypeTabs button{height:38px;border:0;border-radius:11px;background:transparent;color:#81777d;font-weight:800}.entryTypeTabs button.active{background:#fff;color:#8d6098;box-shadow:0 3px 10px rgba(85,55,70,.08)}.ledger.incomeEntry>div:last-child>b{color:#9a659b}.ledger.incomeEntry{background:linear-gradient(90deg,rgba(246,238,250,.45),transparent)}
