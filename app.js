@@ -28,15 +28,15 @@ const dailyBudget=()=>Math.max(0,remain()-buffer());
 const avail=()=>dailyBudget()-spent();
 function save(){localStorage.setItem(key(),JSON.stringify(data));render()}
 function setStep(n){data.step=n;localStorage.setItem(key(),JSON.stringify(data));$$('.stepPanel').forEach(p=>p.classList.toggle('active',+p.dataset.panel===n));$$('#steps button').forEach(b=>b.classList.toggle('now',+b.dataset.step===n))}
-function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b></span><select class="catSelect">${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}"><button class="deleteExpense">×</button>`;d.querySelector('input').onchange=e=>{data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{data.expenses[i].category=e.target.value;save()};d.querySelector('button').onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
+function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b>${x.autoCardId?'<em class="autoBadge">自動</em>':''}</span><select class="catSelect" ${x.autoCardId?'disabled':''}>${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}" ${x.autoCardId?'readonly':''}>${x.autoCardId?'':'<button class="deleteExpense">×</button>'}`;d.querySelector('input').onchange=e=>{if(x.autoCardId)return;data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{if(x.autoCardId)return;data.expenses[i].category=e.target.value;save()};let del=d.querySelector('button');if(del)del.onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
 function renderCategorySummary(){let g=$('#categorySummary');let totals=Object.fromEntries(CATS.map(c=>[c,0]));data.expenses.forEach(e=>totals[e.category||'其他']+=+e.amount||0);g.innerHTML=CATS.map(c=>`<div class="catSummary cat-${c}">${catIcon(c)}<div><small>${c}</small><b>${fmt(totals[c])}</b></div></div>`).join('')}
 function ledger(){let l=$('#ledger');l.innerHTML=data.ledger.length?'':'<p class="hint">本月還沒有記帳。</p>';[...data.ledger].reverse().forEach((x,ri)=>{let i=data.ledger.length-1-ri,d=document.createElement('div');d.className='ledger';let source=x.fundingSource==='pocket'?'手頭上現金':x.fundingSource==='living'?'當月生活費':'';let methodText=[x.method||'現金',source].filter(Boolean).join('・');d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>${fmt(x.amount)}</b> <button>刪除</button></div>`;d.querySelector('button').onclick=()=>{if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(i,1);save()};l.appendChild(d)})}
 
 // ----- 信用卡 -----
 const CARD_KEY='liyunjia-creditcards-v1';
-const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v4';
-const cardDefaults={ctbcCarry:173114,ctbcApr:15,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17};
-function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
+const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
+const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17};
+function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
@@ -56,11 +56,52 @@ function cardMonthTxs(cardId){return selectedMonthTxs().filter(x=>x.card===cardI
 function statementTxs(cardId){let day=CARDS[cardId].closeDay();if(!day)return cardMonthTxs(cardId);let cyc=statementCycle(cur.y,cur.m,day);return cardTxs.filter(x=>x.card===cardId&&inRange(x.date,cyc.start,cyc.end))}
 function shortDate(s){let [y,m,d]=s.split('-').map(Number);return `${m}/${d}`}
 function statementStatus(end){let today=new Date();let t=iso(today.getFullYear(),today.getMonth()+1,today.getDate());if(t>end)return ['已結帳','closed'];return ['累計中','']}
+function nextMonthYM(y=cur.y,m=cur.m){return m===12?[y+1,1]:[y,m+1]}
+function cardEstimate(cardId){
+  const newSpend=txSum(statementTxs(cardId));
+  const ctbcInterest=est30DayInterest(cardSettings.ctbcCarry,cardSettings.ctbcApr);
+  const fubonInterest=est30DayInterest(cardSettings.fubonCarry,cardSettings.fubonApr);
+  const extra=cardId==='ctbc'?(+cardSettings.ctbcCarry||0)+ctbcInterest:cardId==='fubon'?(+cardSettings.fubonCarry||0)+fubonInterest+fubonInstallmentDue():0;
+  return Math.max(0,newSpend+extra);
+}
+function cardDueForNextFixed(cardId){
+  // 中信採「最低應繳」；因 GitHub 靜態版無法連銀行帳單，最低應繳由使用者依實際帳單輸入。
+  if(cardId==='ctbc')return Math.max(0,+cardSettings.ctbcMinDue||0);
+  return cardEstimate(cardId);
+}
+function syncCardsToNextMonth(){
+  const [ny,nm]=nextMonthYM();
+  const target=loadMonth(ny,nm);
+  // 第一次由分卡自動同步時，移除舊版預設的籠統「分期／卡費」，避免重複計算。
+  const hasAuto=target.expenses.some(e=>e.autoCardId);
+  if(!hasAuto){
+    target.expenses=target.expenses.filter(e=>!(e.name==='分期／卡費' && (+e.amount||0)===9390));
+  }
+  const labels={ctbc:'信用卡｜中國信託',fubon:'信用卡｜台北富邦',yuni_fubon:'信用卡｜芋泥台北富邦',cathay:'信用卡｜國泰世華'};
+  for(const id of Object.keys(CARDS)){
+    const amount=cardDueForNextFixed(id);
+    const idx=target.expenses.findIndex(e=>e.autoCardId===id);
+    const row={name:labels[id],amount,category:'債務',autoCardId:id,autoSourceMonth:`${cur.y}-${pad(cur.m)}`};
+    if(idx>=0)target.expenses[idx]={...target.expenses[idx],...row}; else target.expenses.push(row);
+  }
+  target.finished=false;
+  localStorage.setItem(key(ny,nm),JSON.stringify(target));
+}
 function renderCards(){
   let monthItems=selectedMonthTxs(),mt=txSum(monthItems);$('#ccMonthTotal').textContent=fmt(mt);$('#ccListTotal').textContent=fmt(mt);$('#ccListTitle').textContent=`${cur.y}/${cur.m} 刷卡紀錄`;
   const ctbcInterest=est30DayInterest(cardSettings.ctbcCarry,cardSettings.ctbcApr),fubonInterest=est30DayInterest(cardSettings.fubonCarry,cardSettings.fubonApr);
-  for(const id of Object.keys(CARDS)){let card=CARDS[id],day=card.closeDay(),newSpend=txSum(statementTxs(id)),extra=id==='ctbc'?(+cardSettings.ctbcCarry||0)+ctbcInterest:id==='fubon'?(+cardSettings.fubonCarry||0)+fubonInterest+fubonInstallmentDue():0,estimate=newSpend+extra;let status=['待設定','future'],cycle='請設定結帳日';if(day){let cyc=statementCycle(cur.y,cur.m,day);cycle=`${shortDate(cyc.start)}～${shortDate(cyc.end)}`;status=statementStatus(cyc.end)}$(`#${id}Bill`).textContent=fmt(estimate);$(`#${id}Estimate`).textContent=fmt(estimate);$(`#${id}Cycle`).textContent=cycle;let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')}
-  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
+  const estimates={};
+  for(const id of Object.keys(CARDS)){
+    let card=CARDS[id],day=card.closeDay(),estimate=cardEstimate(id);estimates[id]=estimate;
+    let status=['待設定','future'],cycle='請設定結帳日';if(day){let cyc=statementCycle(cur.y,cur.m,day);cycle=`${shortDate(cyc.start)}～${shortDate(cyc.end)}`;status=statementStatus(cyc.end)}
+    $(`#${id}Bill`).textContent=fmt(estimate);$(`#${id}Estimate`).textContent=fmt(estimate);$(`#${id}Cycle`).textContent=cycle;let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
+  }
+  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
+  const [ny,nm]=nextMonthYM();
+  $('#ccSyncMonth').textContent=`${ny}/${nm}`;
+  $('#syncCtbc').textContent=cardSettings.ctbcMinDue>0?fmt(cardSettings.ctbcMinDue):'待輸入';
+  $('#syncFubon').textContent=fmt(estimates.fubon);$('#syncYuniFubon').textContent=fmt(estimates.yuni_fubon);$('#syncCathay').textContent=fmt(estimates.cathay);
+  syncCardsToNextMonth();
   let filtered=monthItems.filter(x=>cardFilter==='all'||x.card===cardFilter).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.created||0)-(+a.created||0));let el=$('#ccLedger');if(!filtered.length){el.innerHTML='<div class="ccEmpty">這個月還沒有信用卡消費；請從「今日開銷」新增。</div>';return}el.innerHTML=filtered.map(x=>`<div class="ccTx readOnly"><div class="ccTxDate">${shortDate(x.date)}</div><div class="ccTxInfo"><b>${escapeHtml(x.note||x.category||'刷卡')}</b><small>${escapeHtml(CARDS[x.card]?.name||'信用卡')}・${escapeHtml(x.category||'其他')}</small></div><div class="ccTxAmount">${fmt(x.amount)}</div></div>`).join('')
 }
 function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -106,12 +147,12 @@ $$('#cashSourceTabs button').forEach(b=>b.onclick=()=>{quickCashSource=b.dataset
 $('#saveQ').onclick=()=>{let amount=+$('#qAmount').value||0;if(amount<=0){alert('請輸入開銷金額');$('#qAmount').focus();return}let category=$('#qCategory').value,note=$('#qNote').value.trim(),now=new Date(),sameMonth=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m,displayDate=sameMonth?now.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}):`${cur.m}/1`;if(quickPayMethod==='credit'){let card=$('#qCard').value,date=defaultCardDate(),tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};cardTxs.push(tx);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));data.ledger.push({amount,category,method:CARDS[card].name,note:note||'信用卡消費',date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true})}else if(quickCashSource==='pocket'){if(amount>(+loans.cash||0)){alert(`手頭上現金目前只有 ${fmt(loans.cash)}，不足以支付這筆開銷。`);return}loans.cash=Math.max(0,(+loans.cash||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));data.ledger.push({amount,category,method:'現金',fundingSource:'pocket',budgetImpact:false,note:note||'現金開銷',date:displayDate})}else{data.ledger.push({amount,category,method:'現金',fundingSource:'living',budgetImpact:true,note:note||'現金開銷',date:displayDate})}$('#qAmount').value='';$('#qNote').value='';data.finished=false;save()};
 $('#finish').onclick=()=>{data.finished=true;data.step=4;save();alert('本月預算已完成 ✓')};$('#addExpense').onclick=()=>$('#dlg').showModal();$('#eSave').onclick=e=>{let name=$('#eName').value.trim(),amount=+$('#eAmount').value||0;if(!name||amount<=0){e.preventDefault();return alert('請輸入名稱與金額')}data.expenses.push({name,amount,category:$('#eCategory').value});data.finished=false;$('#eName').value='';$('#eAmount').value='';save()};
 $$('.ccFilters button').forEach(b=>b.onclick=()=>{cardFilter=b.dataset.cardfilter;$$('.ccFilters button').forEach(x=>x.classList.toggle('active',x===b));renderCards()});
-['ctbcCarry','fubonCarry','fubonInst1Amount','fubonInst1Count','fubonInst2Amount','fubonInst2Count','yuniFubonCloseDay','cathayCloseDay'].forEach(id=>$('#'+id).onchange=()=>{cardSettings[id]=Math.max(0,+$('#'+id).value||0);saveCardSettings()});
+['ctbcCarry','ctbcMinDue','fubonCarry','fubonInst1Amount','fubonInst1Count','fubonInst2Amount','fubonInst2Count','yuniFubonCloseDay','cathayCloseDay'].forEach(id=>$('#'+id).onchange=()=>{cardSettings[id]=Math.max(0,+$('#'+id).value||0);saveCardSettings()});
 ['fundBig','fundSecond','fundThird','oweSister','oweBig','oweSecond','oweThird'].forEach(id=>$('#'+id).onchange=()=>{const v=Math.max(0,+$('#'+id).value||0);if(id==='fundBig')loans.funds.大寶=v;if(id==='fundSecond')loans.funds.二寶=v;if(id==='fundThird')loans.funds.三寶=v;if(id==='oweSister')loans.owed.姐姐=v;if(id==='oweBig')loans.owed.大寶=v;if(id==='oweSecond')loans.owed.二寶=v;if(id==='oweThird')loans.owed.三寶=v;saveLoans()});
 $('#quickCashOnHand').onchange=()=>{loans.cash=Math.max(0,+$('#quickCashOnHand').value||0);saveLoans();render()};
 $('#saveLoan').onclick=addLoanTx;
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=loadMonth();render()};$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=13.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=13.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=14.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=14.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();

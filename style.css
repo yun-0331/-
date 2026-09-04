@@ -56,3 +56,15 @@ nav.nav5{grid-template-columns:repeat(5,1fr)}nav.nav5 button>svg{display:block;w
 .loanHero{justify-content:flex-start}.loanHero>div:first-child{width:100%}
 @media(max-width:380px){.cashPocketCard{align-items:stretch;flex-direction:column}.cashPocketCard label{width:100%}.rateRow{grid-template-columns:auto auto}.rateRow>small{grid-column:1/-1;text-align:left}}
 .dailySummary.dailySummary4{grid-template-columns:1fr 1fr}.dailySummary.dailySummary4 div{min-height:58px;display:flex;flex-direction:column;justify-content:center}
+
+/* v14 信用卡自動同步到下月固定支出 */
+.autoBadge{display:inline-flex;align-items:center;margin-left:7px;padding:2px 7px;border-radius:999px;background:#f1e7f6;color:#8e5e9d;font-size:10px;font-style:normal;font-weight:700;vertical-align:middle}
+.expense input[readonly]{background:#f7f2f5;color:#6f6070;cursor:default}
+.expense select:disabled{opacity:.65;background:#f7f2f5}
+.cardSyncPanel{background:linear-gradient(180deg,#fff,#fdf8fb)}
+.cardSyncRows{display:grid;gap:8px;margin-top:12px}
+.cardSyncRows>div{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #eadde7;border-radius:15px;background:#fff}
+.cardSyncRows span{display:flex;flex-direction:column;font-weight:700;color:#4f424d}
+.cardSyncRows span small{font-weight:500;color:#9b8797;margin-top:3px}
+.cardSyncRows b{color:#8f5b88;font-size:18px;white-space:nowrap}
+.minDueInput{margin-top:8px}
