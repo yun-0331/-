@@ -207,7 +207,7 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
  
  $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=fmt(Math.max(0,r));$('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fSaved').textContent=fmt(sv);$('#savedAmount').value=sv;
  $('#dSpent').textContent=fmt(spent());$('#diagIncome').textContent=fmt(inc());$('#diagFixed').textContent=fmt(fixed());$('#diagSpent').textContent=fmt(allSpent());$('#diagAvail').textContent=fmt(Math.max(0,a));$('#diagMsg').innerHTML=a>=0?`扣除固定支出、已存入儲蓄與本月生活開銷後，目前還有 <b>${fmt(a)}</b> 可以使用。`:`本月生活開銷已超過設定額度 <b>${fmt(Math.abs(a))}</b>。`;renderDiagnosis();
- expenses();setStep(data.step||1);renderCards();renderLoans()}
+ expenses();setStep(data.step||1);renderCards();renderLoans();updateSavingsProgress();renderArchive()}
 
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
@@ -313,6 +313,20 @@ function renderBankLoans(){
 }
 
 
+
+// ----- v27 正式使用：完整備份 / 每月封存 / 儲蓄進度 -----
+const ARCHIVE_KEY='family-five-month-archives-v1';
+function loadArchives(){try{return JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'{}')||{}}catch(e){return {}}}
+let monthArchives=loadArchives();
+function allAppStorage(){let out={};for(let i=0;i<localStorage.length;i++){let k=localStorage.key(i);if(k&&(k.startsWith('liyunjia-')||k.startsWith('family-five-')))out[k]=localStorage.getItem(k)}return out}
+function exportBackup(){const payload={app:'一家五口每月開銷明細',version:27,exportedAt:new Date().toISOString(),storage:allAppStorage()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`一家五口開銷備份_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function importBackupFile(file){if(!file)return;try{const x=JSON.parse(await file.text());if(!x||!x.storage||typeof x.storage!=='object')throw new Error('格式錯誤');if(!confirm('匯入會以備份內容覆蓋目前記帳資料，確定繼續？'))return;Object.keys(localStorage).forEach(k=>{if(k.startsWith('liyunjia-')||k.startsWith('family-five-'))localStorage.removeItem(k)});Object.entries(x.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('備份已還原，網頁將重新載入。');location.reload()}catch(e){alert('無法匯入：這不是有效的「一家五口每月開銷」備份檔。')}}
+function monthTop3(){let t={};data.ledger.forEach(x=>{let c=x.category||'其他';t[c]=(t[c]||0)+(+x.amount||0)});return Object.entries(t).sort((a,b)=>b[1]-a[1]).slice(0,3)}
+function renderArchive(){const box=$('#archiveSummary'),hist=$('#archiveHistory');if(!box||!hist)return;let a=Math.max(0,avail());box.innerHTML=`<div><small>本月收入</small><b>${fmt(inc()+livingExtraIncome()+pocketExtraIncome())}</b></div><div><small>固定支出</small><b>${fmt(fixed())}</b></div><div><small>生活開銷</small><b>${fmt(allSpent())}</b></div><div><small>月底目前結餘</small><b>${fmt(a)}</b></div>`;let rows=Object.values(monthArchives).sort((a,b)=>b.key.localeCompare(a.key));hist.innerHTML=rows.length?rows.slice(0,12).map(x=>`<div class="archiveRow"><div><b>${x.key} 月報</b><small>支出 ${fmt(x.spent)}・儲蓄 ${fmt(x.saved)}</small></div><b>剩 ${fmt(x.available)}</b></div>`).join(''):'<p class="hint">還沒有封存過月份。</p>'}
+function archiveCurrentMonth(){let k=`${cur.y}-${String(cur.m).padStart(2,'0')}`,available=Math.max(0,avail()),action=$('#monthEndAction')?.value||'none';if(monthArchives[k]&&!confirm(`${k} 已封存過，要更新這份月報嗎？`))return;monthArchives[k]={key:k,income:inc()+livingExtraIncome()+pocketExtraIncome(),fixed:fixed(),spent:allSpent(),saved:saved(),available,top3:monthTop3(),action,archivedAt:new Date().toISOString()};localStorage.setItem(ARCHIVE_KEY,JSON.stringify(monthArchives));if(action==='savings'&&available>0){data.savedAmount=saved()+available;save()}else if(action==='next'&&available>0){let nm=cur.m+1,ny=cur.y;if(nm>12){nm=1;ny++}let nk=`liyunjia-${ny}-${String(nm).padStart(2,'0')}`;let nx;try{nx=JSON.parse(localStorage.getItem(nk)||'null')}catch(e){}if(!nx)nx=fresh(ny,nm);nx.incomeLedger=Array.isArray(nx.incomeLedger)?nx.incomeLedger:[];nx.incomeLedger.push({amount:available,category:'其他收入',destination:'living',note:'上月結餘轉入',date:`${ny}/${nm}/1`,created:Date.now()});localStorage.setItem(nk,JSON.stringify(nx))}else if(action.startsWith('loan')&&available>0){let bl=bankLoans.find(x=>x.id===action);if(bl){bl.principal=Math.max(0,(+bl.principal||0)-available);localStorage.setItem(BANK_LOAN_KEY,JSON.stringify(bankLoans))}}localStorage.setItem(ARCHIVE_KEY,JSON.stringify(monthArchives));renderArchive();renderBankLoans();alert('本月報表已封存。')}
+function pocketExtraIncome(){return data.incomeLedger.filter(x=>x.destination==='pocket').reduce((s,x)=>s+(+x.amount||0),0)}
+function updateSavingsProgress(){let target=suggestedSavings(),sv=saved(),pct=target>0?Math.min(100,Math.round(sv/target*100)):0;let t=$('#savingsProgressText'),f=$('#savingsProgressFill');if(t)t.textContent=`${fmt(sv)} / ${fmt(target)}（${pct}%）`;if(f)f.style.width=pct+'%'}
+
 function resetAllAppData(){
   const ok=window.confirm('確定要清除所有紀錄並恢復初始狀態嗎？\n\n會清除：今日開銷、今日收入、信用卡消費紀錄、借款紀錄、手頭現金，以及你自行修改過的資料。\n\n目前版本設定好的家庭固定支出、貸款基本資料與排程會恢復成乾淨預設值。');
   if(!ok)return;
@@ -327,8 +341,13 @@ function resetAllAppData(){
 }
 const resetAllDataBtn=$('#resetAllData');if(resetAllDataBtn)resetAllDataBtn.addEventListener('click',resetAllAppData);
 
+
+const exportBackupBtn=$('#exportBackup');if(exportBackupBtn)exportBackupBtn.addEventListener('click',exportBackup);
+const importBackupInput=$('#importBackup');if(importBackupInput)importBackupInput.addEventListener('change',e=>importBackupFile(e.target.files?.[0]));
+const archiveMonthBtn=$('#archiveMonth');if(archiveMonthBtn)archiveMonthBtn.addEventListener('click',archiveCurrentMonth);
+
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=26.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=26.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=27.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=27.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();

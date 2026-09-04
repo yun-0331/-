@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=26.0.0">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=27.0.0">
 <title>一家五口每月開銷明細</title>
 </head>
 <body><div class="app">
@@ -27,7 +27,7 @@
 
   <section class="stepPanel" data-panel="3"><div class="cardHead"><div><small>步驟 3</small><h2>本月可用金額</h2></div><b id="remainSummary">$0</b></div>
     <div class="finishCard savingsCard"><div><small>本月收入</small><strong id="availIncome">$0</strong></div><div><small>固定支出</small><strong id="availFixed">$0</strong></div><div class="suggestSaving"><small>建議存款金額 <b>10%</b></small><strong id="suggestedSavings">$0</strong></div><div><small>已存入儲蓄</small><strong id="availSaved">$0</strong></div><div class="wideAvailable"><small>本月可用</small><strong id="availSpend">$0</strong></div></div>
-    <label class="bufferEdit savingsInput">已存入儲蓄金額<input id="savedAmount" type="number" inputmode="numeric" min="0" placeholder="有實際存入再填寫"></label>
+    <label class="bufferEdit savingsInput">已存入儲蓄金額<input id="savedAmount" type="number" inputmode="numeric" min="0" placeholder="有實際存入再填寫"></label><div class="savingsProgressBox"><div><small>本月儲蓄進度</small><b id="savingsProgressText">$0 / $0（0%）</b></div><div class="savingsTrack"><i id="savingsProgressFill"></i></div></div>
     <p class="hint center">建議存款以本月收入的 10% 顯示；只有「已存入儲蓄金額」會實際從本月可用金額扣除。</p>
     <button class="nextStep" data-next="4">下一步：確認完成 <span>→</span></button></section>
 
@@ -185,7 +185,8 @@
     <div class="diagSection"><div class="diagSectionHead"><div><small>錢主要花在哪裡</small><h3>本月開銷排行</h3></div></div><div id="diagCategoryList" class="diagCategoryList"></div></div>
     <div class="diagSection"><div class="diagSectionHead"><div><small>依你的實際紀錄判斷</small><h3>可以先從哪裡省</h3></div></div><div id="diagAdvice" class="diagAdvice"></div></div>
     <p class="diagFoot">建議只根據你本月已登錄的開銷做提醒；必要支出、醫療與孩子需求不會因金額高就直接叫你刪掉。</p>
-    <div class="diagSection dataManageSection"><div class="diagSectionHead"><div><small>資料管理</small><h3>重新開始記帳</h3></div></div><div class="resetDataBox"><div><b>恢復初始狀態</b><p>清除這個網站曾輸入的收支、信用卡消費、借款、手頭現金與自行修改資料，恢復目前版本的乾淨預設值。</p></div><button id="resetAllData" type="button" class="dangerReset">清除所有紀錄</button></div></div>
+    <div class="diagSection"><div class="diagSectionHead"><div><small>月底整理</small><h3>每月封存報表</h3></div></div><div class="archiveBox"><div id="archiveSummary" class="archiveSummary"></div><div class="archiveActions"><button id="archiveMonth" type="button">封存本月</button><select id="monthEndAction"><option value="none">月底結餘：不處理</option><option value="savings">轉入儲蓄</option><option value="next">留到下月生活費</option><option value="loan1">額外還貸款(一)</option><option value="loan2">額外還貸款(二)</option><option value="loan3">額外還貸款(三)</option></select></div><div id="archiveHistory" class="archiveHistory"></div></div></div>
+<div class="diagSection dataManageSection"><div class="diagSectionHead"><div><small>資料管理</small><h3>備份、還原與重新開始</h3></div></div><div class="backupButtons"><button id="exportBackup" type="button">匯出完整備份</button><label class="importBtn">匯入備份<input id="importBackup" type="file" accept="application/json,.json"></label></div><p class="diagFoot">備份會包含所有月份、信用卡、借款、貸款與封存報表。</p><div class="resetDataBox"><div><b>恢復初始狀態</b><p>清除這個網站曾輸入的收支、信用卡消費、借款、手頭現金與自行修改資料，恢復目前版本的乾淨預設值。</p></div><button id="resetAllData" type="button" class="dangerReset">清除所有紀錄</button></div></div>
 
   </div>
 </section>
@@ -193,4 +194,4 @@
 <nav class="nav6"><button data-v="budget" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><small>預算</small></button><button data-v="quick"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"/></svg><small>今日開銷</small></button><button data-v="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/></svg><small>信用卡</small></button><button data-v="loans"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4zM7 8V6h10v2M8 13h8M12 10v6"/></svg><small>借款</small></button><button data-v="bankloans"><svg viewBox="0 0 24 24"><path d="M4 7h16M6 7v12M18 7v12M4 19h16M8 11h8M8 15h5"/></svg><small>貸款</small></button><button data-v="diag"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7"/></svg><small>診斷</small></button></nav>
 </div>
 <dialog id="dlg"><form method="dialog"><h3>新增固定支出</h3><label>名稱<input id="eName"></label><label>金額<input id="eAmount" type="number" inputmode="numeric"></label><label>分類<select id="eCategory"><option>必要</option><option>可調整</option><option>債務</option><option>小孩</option><option>交通</option><option>其他</option></select></label><div class="actions"><button value="cancel" class="soft">取消</button><button id="eSave" value="default">新增</button></div></form></dialog>
-<script src="./app.js?v=26.0.0"></script></body></html>
+<script src="./app.js?v=27.0.0"></script></body></html>
