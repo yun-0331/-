@@ -1,23 +1,14 @@
-莉芸家預算 v1｜GitHub Pages 版
+莉芸家預算 v2｜GitHub Pages 版
 
-1. 解壓縮 ZIP。
-2. 將全部檔案上傳到 GitHub repository 根目錄。
-3. GitHub → Settings → Pages。
-4. Source 選 Deploy from a branch；Branch 選 main / root。
-5. 等 GitHub Pages 網址產生。
-6. iPhone Safari 開啟網址 → 分享 → 加入主畫面。
+更新內容：
+1. 四步驟「收入 → 看建議 → 分配 → 完成」改為真正可切換流程。
+2. 新增固定支出占比、固定支出後剩餘、建議緩衝金、建議日常上限。
+3. 第 4 步可自行設定緩衝金。
+4. 快速記帳會從「日常可用」扣除，首頁顯示使用進度。
+5. 新增 JSON 備份匯入功能。
+6. 保留原本 localStorage 資料格式並自動相容舊版。
+7. Service Worker 更新為 v2，避免舊版快取卡住。
 
-第一版功能：
-- 米白＋淡粉＋淡紫手機介面
-- 2026/9 預設家庭收入 110,000
-- 固定支出 103,590
-- 待分配 6,410
-- 可修改收入與固定支出
-- 快速記帳
-- 本月診斷
-- 月份切換
-- localStorage 自動儲存
-- JSON 備份匯出
-- PWA，可加入 iPhone 主畫面
-
-注意：第一版資料只存在當前瀏覽器。換手機或清除網站資料不會自動同步。
+GitHub 更新方式：
+把 ZIP 解壓後的 7 個檔案全部上傳到原 Repository 根目錄，覆蓋同名檔案並 Commit changes。
+GitHub Pages 網址不會改變。
