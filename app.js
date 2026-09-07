@@ -212,6 +212,26 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
 $('#savedAmount').onchange=()=>{data.savedAmount=Math.max(0,+$('#savedAmount').value||0);data.finished=false;save()};
+// v28: 修正「新增固定支出」按鈕。開啟輸入視窗，新增後立即存入當月 localStorage。
+$('#addExpense').addEventListener('click',()=>{
+  $('#eName').value='';
+  $('#eAmount').value='';
+  $('#eCategory').value='必要';
+  $('#dlg').showModal();
+  setTimeout(()=>$('#eName').focus(),0);
+});
+$('#eSave').addEventListener('click',(ev)=>{
+  ev.preventDefault();
+  const name=$('#eName').value.trim();
+  const amount=Math.max(0,Number($('#eAmount').value)||0);
+  const category=$('#eCategory').value||'必要';
+  if(!name){alert('請輸入固定支出名稱');$('#eName').focus();return}
+  if(amount<=0){alert('請輸入固定支出金額');$('#eAmount').focus();return}
+  data.expenses.push({name,amount,category});
+  data.finished=false;
+  $('#dlg').close();
+  save();
+});
 let quickPayMethod='cash',quickCashSource='living';
 function renderQuickPayChoice(){$$('#payMethodTabs button').forEach(x=>x.classList.toggle('active',x.dataset.method===quickPayMethod));$('#qCardWrap').classList.toggle('hidden',quickPayMethod!=='credit');$('#qCashSourceWrap').classList.toggle('hidden',quickPayMethod!=='cash')}
 $$('#payMethodTabs button').forEach(b=>b.onclick=()=>{quickPayMethod=b.dataset.method;renderQuickPayChoice()});
@@ -349,5 +369,5 @@ const archiveMonthBtn=$('#archiveMonth');if(archiveMonthBtn)archiveMonthBtn.addE
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=27.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=27.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=28.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=28.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
