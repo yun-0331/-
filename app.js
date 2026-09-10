@@ -302,7 +302,7 @@ function setQuickCategories(list){const sel=$('#qCategory');const keep=sel.value
 function renderEntryType(){
   const income=quickEntryType==='income';
   $$('#entryTypeTabs button').forEach(x=>x.classList.toggle('active',x.dataset.entry===quickEntryType));
-  $('#saveQ').textContent=income?'＋ 加入今日收入':'＋ 加入今日開銷';
+  $('#saveQ').textContent=income?'＋ 加入收入':'＋ 加入支出';
   $('#payMethodTabs').style.display=income?'none':'';
   $('#qCardWrap').classList.add('hidden');
   $('#qCashSourceWrap').classList.remove('hidden');
@@ -319,11 +319,15 @@ $('#saveQ').addEventListener('click',()=>{
   if(amount<=0){alert(quickEntryType==='income'?'請輸入收入金額':'請輸入開銷金額');$('#qAmount').focus();return}
   const category=$('#qCategory').value;
   const note=$('#qNote').value.trim();
-  const now=new Date();
-  const sameMonth=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m;
-  const displayDate=sameMonth?now.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}):`${cur.m}/1`;
-  if(!Array.isArray(data.incomeLedger))data.incomeLedger=[];
-  if(!Array.isArray(data.ledger))data.ledger=[];
+  const selectedDate=$('#qDate').value||localISODate();
+  const dm=selectedDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!dm){alert('請選擇正確日期');return}
+  const entryY=+dm[1],entryM=+dm[2],entryD=+dm[3];
+  const displayDate=`${entryY}/${entryM}/${entryD}`;
+  const sameMonth=entryY===cur.y&&entryM===cur.m;
+  const targetData=sameMonth?data:loadMonth(entryY,entryM);
+  if(!Array.isArray(targetData.incomeLedger))targetData.incomeLedger=[];
+  if(!Array.isArray(targetData.ledger))targetData.ledger=[];
   if(quickEntryType==='income'){
     const destination=quickCashSource==='pocket'?'pocket':quickCashSource==='linepay'?'linepay':'living';
     if(destination==='pocket'){
@@ -333,23 +337,28 @@ $('#saveQ').addEventListener('click',()=>{
       loans.linepayMoney=(+loans.linepayMoney||0)+amount;
       localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
     }
-    data.incomeLedger.push({id:'inc-'+Date.now(),amount,category,note:note||category||'今日收入',destination,date:displayDate,created:Date.now()});
+    targetData.incomeLedger.push({id:'inc-'+Date.now(),amount,category,note:note||category||'收入',destination,date:displayDate,created:Date.now()});
   }else if(quickPayMethod==='credit'){
-    const card=$('#qCard').value,date=defaultCardDate(),tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};
+    const card=$('#qCard').value,date=selectedDate,tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};
     cardTxs.push(tx);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));
-    data.ledger.push({amount,category,method:CARDS[card].name,note:note||'信用卡消費',date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true,created:Date.now()});
+    targetData.ledger.push({amount,category,method:CARDS[card].name,note:note||'信用卡消費',date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true,created:Date.now()});
   }else if(quickCashSource==='pocket'){
     if(amount>(+loans.cash||0)){alert(`手頭上現金目前只有 ${fmt(loans.cash)}，不足以支付這筆開銷。`);return}
     loans.cash=Math.max(0,(+loans.cash||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
-    data.ledger.push({amount,category,method:'現金',fundingSource:'pocket',budgetImpact:false,note:note||'現金開銷',date:displayDate,created:Date.now()});
+    targetData.ledger.push({amount,category,method:'現金',fundingSource:'pocket',budgetImpact:false,note:note||'現金開銷',date:displayDate,created:Date.now()});
   }else if(quickCashSource==='linepay'){
     if(amount>(+loans.linepayMoney||0)){alert(`LINE Pay Money 目前只有 ${fmt(loans.linepayMoney)}，不足以支付這筆開銷。`);return}
     loans.linepayMoney=Math.max(0,(+loans.linepayMoney||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
-    data.ledger.push({amount,category,method:'LINE Pay Money',fundingSource:'linepay',budgetImpact:false,note:note||'LINE Pay Money 開銷',date:displayDate,created:Date.now()});
+    targetData.ledger.push({amount,category,method:'LINE Pay Money',fundingSource:'linepay',budgetImpact:false,note:note||'LINE Pay Money 開銷',date:displayDate,created:Date.now()});
   }else{
-    data.ledger.push({amount,category,method:'現金',fundingSource:'living',budgetImpact:true,note:note||'現金開銷',date:displayDate,created:Date.now()});
+    targetData.ledger.push({amount,category,method:'現金',fundingSource:'living',budgetImpact:true,note:note||'現金開銷',date:displayDate,created:Date.now()});
   }
-  $('#qAmount').value='';$('#qNote').value='';data.finished=false;if(quickEntryType==='expense'&&sameMonth){expenseDetailDate=localISODate();if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=expenseDetailDate;}save();
+  targetData.finished=false;
+  localStorage.setItem(key(entryY,entryM),JSON.stringify(targetData));
+  $('#qAmount').value='';$('#qNote').value='';
+  if(!sameMonth){cur={y:entryY,m:entryM};data=targetData;}
+  if(quickEntryType==='expense'){expenseDetailDate=selectedDate;if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=expenseDetailDate;}
+  render();
 });
 const historyBtn=$('#showExpenseHistory'),historyPicker=$('#expenseHistoryPicker'),historyDate=$('#expenseHistoryDate'),todayBtn=$('#backToTodayExpenses');
 if(historyDate)historyDate.value=expenseDetailDate;
@@ -357,6 +366,7 @@ if(historyBtn)historyBtn.addEventListener('click',()=>{historyPicker.hidden=!his
 if(historyDate)historyDate.addEventListener('change',()=>{if(!historyDate.value)return;expenseDetailDate=historyDate.value;ledger()});
 if(todayBtn)todayBtn.addEventListener('click',()=>{expenseDetailDate=localISODate();historyDate.value=expenseDetailDate;historyPicker.hidden=true;ledger()});
 renderEntryType();
+if($('#qDate'))$('#qDate').value=localISODate();
 $('#quickCashOnHand').onchange=()=>{loans.cash=Math.max(0,+$('#quickCashOnHand').value||0);saveLoans();render()};
 $('#quickLinePayMoney').onchange=()=>{loans.linepayMoney=Math.max(0,+$('#quickLinePayMoney').value||0);saveLoans();render()};
 $('#saveLoan').onclick=addLoanTx;
@@ -443,5 +453,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=34.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=34.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=35.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=35.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
