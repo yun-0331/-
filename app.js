@@ -1,9 +1,9 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('zh-TW');
 let cur={y:2026,m:9};
-const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=12))?2980:0;
+const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=11))?3000:0;
 const cardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
-const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年12月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
+const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
@@ -23,12 +23,13 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   const ensureNormal=(name,amount)=>{let e=x.expenses.find(e=>e.name===name);if(e){e.amount=amount;e.category='必要';delete e.scheduleId}else x.expenses.push({name,amount,category:'必要'})};
   ensureNormal('大寶生活費',1200); ensureNormal('二寶生活費',400);
   const syncTimed=(name,amount,scheduleId)=>{x.expenses=x.expenses.filter(e=>!(e.name===name||e.scheduleId===scheduleId));if(amount>0)x.expenses.push({name,amount,category:'債務',scheduleId})};
-  syncTimed('分期（至115年12月）',installmentAmount(y,m),'installment-2026-12');
+  x.expenses=x.expenses.filter(e=>!(e.name==='分期（至115年12月）'||e.scheduleId==='installment-2026-12'));
+  syncTimed('分期（至115年11月）',installmentAmount(y,m),'installment-2026-11');
   syncTimed('卡費（10月～1月）',cardFeeAmount(y,m),'cardfee-2026-10-2027-01');
   // v24：修正三筆信貸的正確每月繳款金額。
   const correctLoanPayments={'信貸(1)':7496,'信貸(2)':6100,'信貸(3)':6844};
   x.expenses.forEach(e=>{if(correctLoanPayments[e.name]!==undefined){e.amount=correctLoanPayments[e.name];e.category='債務';e.correctLoanPayment=true}});
-  const fixedOrder=['先生生活費','孝親費','大寶生活費','二寶生活費','保險','信貸(1)','信貸(2)','信貸(3)','分期（至115年12月）','卡費（10月～1月）','補習與英文','ETC 與加油','電話','長照','捐款與 ETF'];
+  const fixedOrder=['先生生活費','孝親費','大寶生活費','二寶生活費','保險','信貸(1)','信貸(2)','信貸(3)','分期（至115年11月）','卡費（10月～1月）','補習與英文','ETC 與加油','電話','長照','捐款與 ETF'];
   x.expenses.sort((a,b)=>{let ai=fixedOrder.indexOf(a.name),bi=fixedOrder.indexOf(b.name);ai=ai<0?999:ai;bi=bi<0?999:bi;return ai-bi});
   x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaultsFor(y,m)[i]?.[2]||'其他'}));
   if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
@@ -403,5 +404,5 @@ const archiveMonthBtn=$('#archiveMonth');if(archiveMonthBtn)archiveMonthBtn.addE
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash;$('#quickLinePayView').textContent=fmt(loans.linepayMoney);$('#quickLinePayMoney').value=loans.linepayMoney}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=31.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=31.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=32.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=32.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
