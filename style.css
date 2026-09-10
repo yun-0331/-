@@ -91,3 +91,5 @@ nav.nav6{grid-template-columns:repeat(6,1fr)}nav.nav6 button>svg{display:block;w
 
 /* ===== v29：LINE Pay Money 餘額 ===== */
 .linePayMoneyCard{background:linear-gradient(135deg,#fbfff9,#f3faef)}.linePayMoneyCard strong{color:#647b63}.linePayMoneyCard small{color:#778d75}.cashSourceTabs button[data-source="linepay"].active{color:#5f7d5c}
+
+.ccCycleSummary{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.55);font-size:12px}.ccCycleSummary span{opacity:.78}.ccCycleSummary strong{font-size:14px}.ccStatement .ccTitle h2{font-size:24px}.ccStatement .ccTitle h2:before{content:""}

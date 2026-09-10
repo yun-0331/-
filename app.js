@@ -80,11 +80,28 @@ function txSum(items){return items.reduce((s,x)=>s+(+x.amount||0),0)}
 function selectedMonthTxs(){let prefix=`${cur.y}-${pad(cur.m)}-`;return cardTxs.filter(x=>(x.date||'').startsWith(prefix))}
 function cardMonthTxs(cardId){return selectedMonthTxs().filter(x=>x.card===cardId)}
 function statementTxs(cardId){let day=CARDS[cardId].closeDay();if(!day)return cardMonthTxs(cardId);let cyc=statementCycle(cur.y,cur.m,day);return cardTxs.filter(x=>x.card===cardId&&inRange(x.date,cyc.start,cyc.end))}
+function nextMonthPair(y,m){return m===12?[y+1,1]:[y,m+1]}
+function cycleForEndMonth(y,m,closeDay){return statementCycle(y,m,closeDay)}
+function cardCycleView(cardId){
+  const day=CARDS[cardId].closeDay();
+  if(!day)return {current:null,closed:null};
+  const now=new Date(), isCurrent=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m;
+  if(!isCurrent){const current=cycleForEndMonth(cur.y,cur.m,day);return {current,closed:null}}
+  const today=now.getDate();
+  if(today>day){
+    const closed=cycleForEndMonth(cur.y,cur.m,day),[ny,nm]=nextMonthPair(cur.y,cur.m),current=cycleForEndMonth(ny,nm,day);
+    return {current,closed};
+  }
+  const current=cycleForEndMonth(cur.y,cur.m,day),[py,pm]=prevMonth(cur.y,cur.m),closed=cycleForEndMonth(py,pm,day);
+  return {current,closed};
+}
+function cycleTxs(cardId,cyc){return cyc?cardTxs.filter(x=>x.card===cardId&&inRange(x.date,cyc.start,cyc.end)):[]}
+function activeStatementTxs(cardId){let v=cardCycleView(cardId);return v.current?cycleTxs(cardId,v.current):cardMonthTxs(cardId)}
 function shortDate(s){let [y,m,d]=s.split('-').map(Number);return `${m}/${d}`}
 function statementStatus(end){let today=new Date();let t=iso(today.getFullYear(),today.getMonth()+1,today.getDate());if(t>end)return ['已結帳','closed'];return ['累計中','']}
 function nextMonthYM(y=cur.y,m=cur.m){return m===12?[y+1,1]:[y,m+1]}
 function cardEstimate(cardId){
-  const newSpend=txSum(statementTxs(cardId));
+  const newSpend=txSum(activeStatementTxs(cardId));
   const ctbcInterest=est30DayInterest(cardSettings.ctbcCarry,cardSettings.ctbcApr);
   const fubonInterest=est30DayInterest(cardSettings.fubonCarry,cardSettings.fubonApr);
   const extra=cardId==='ctbc'?(+cardSettings.ctbcCarry||0)+ctbcInterest:cardId==='fubon'?(+cardSettings.fubonCarry||0)+fubonInterest+fubonInstallmentDue():0;
@@ -92,7 +109,7 @@ function cardEstimate(cardId){
 }
 function ceil100(n){return Math.ceil(Math.max(0,n)/100)*100}
 function ctbcAutoMinDue(){
-  const newSpend=txSum(statementTxs('ctbc'));
+  const newSpend=txSum(activeStatementTxs('ctbc'));
   const carry=Math.max(0,+cardSettings.ctbcCarry||0);
   const interest=est30DayInterest(carry,cardSettings.ctbcApr);
   const total=carry+newSpend+interest;
@@ -136,8 +153,11 @@ function renderCards(){
   const estimates={};
   for(const id of Object.keys(CARDS)){
     let card=CARDS[id],day=card.closeDay(),estimate=cardEstimate(id);estimates[id]=estimate;
-    let status=['待設定','future'],cycle='請設定結帳日';if(day){let cyc=statementCycle(cur.y,cur.m,day);cycle=`${shortDate(cyc.start)}～${shortDate(cyc.end)}`;status=statementStatus(cyc.end)}
-    $(`#${id}Bill`).textContent=fmt(estimate);$(`#${id}Estimate`).textContent=fmt(estimate);$(`#${id}Cycle`).textContent=cycle;let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
+    let status=['待設定','future'],cycle='請設定結帳日',currentSpend=0,closedSpend=0,closedCycle='—';
+    if(day){let view=cardCycleView(id);if(view.current){cycle=`${shortDate(view.current.start)}～${shortDate(view.current.end)}`;currentSpend=txSum(cycleTxs(id,view.current));status=['本期累積','']}if(view.closed){closedCycle=`${shortDate(view.closed.start)}～${shortDate(view.closed.end)}`;closedSpend=txSum(cycleTxs(id,view.closed))}}
+    $(`#${id}Bill`).textContent=fmt(currentSpend);$(`#${id}Estimate`).textContent=fmt(estimate);$(`#${id}Cycle`).textContent=cycle;
+    let cv=$(`#${id}ClosedValue`),cc=$(`#${id}ClosedCycle`);if(cv)cv.textContent=fmt(closedSpend);if(cc)cc.textContent=closedCycle;
+    let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
   }
   $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
   const [ny,nm]=nextMonthYM();
@@ -383,5 +403,5 @@ const archiveMonthBtn=$('#archiveMonth');if(archiveMonthBtn)archiveMonthBtn.addE
 function showView(v){const target=document.getElementById(v);if(!target)return;$$('.view').forEach(x=>x.classList.remove('active'));$$('nav button[data-v]').forEach(x=>x.classList.remove('active'));target.classList.add('active');const btn=$$('nav button[data-v]').find(x=>x.dataset.v===v);if(btn)btn.classList.add('active');window.scrollTo({top:0,behavior:'instant'});if(v==='cards')renderCards();if(v==='quick'){ledger();$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash;$('#quickLinePayView').textContent=fmt(loans.linepayMoney);$('#quickLinePayMoney').value=loans.linepayMoney}if(v==='loans')renderLoans();if(v==='bankloans')renderBankLoans()}
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=30.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=30.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=31.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=31.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
