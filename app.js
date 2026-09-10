@@ -86,11 +86,93 @@ function ledger(){
     let x=r.x,d=document.createElement('div');d.className='ledger';
     let source=x.fundingSource==='pocket'?'手頭上現金':x.fundingSource==='linepay'?'LINE Pay Money':x.fundingSource==='living'?'當月生活費':'';
     let methodText=[x.method||'現金',source].filter(Boolean).join('・');
-    d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b> <button>刪除</button></div>`;
-    d.querySelector('button').onclick=()=>{if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
+    d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="editLedger">修改</button><button type="button" class="deleteLedger">刪除</button></div></div>`;
+    d.querySelector('.editLedger').onclick=()=>openExpenseEditor(x,r.i);
+    d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
     l.appendChild(d)
   })
 }
+
+let editingExpense=null,editPayMethod='cash',editCashSource='living';
+function detectCardId(x){
+  if(x.sourceId){const tx=cardTxs.find(t=>t.id===x.sourceId);if(tx?.card)return tx.card}
+  return Object.keys(CARDS).find(id=>CARDS[id].name===x.method)||'ctbc';
+}
+function renderExpenseEditorPayment(){
+  $$('#editPayMethodTabs button').forEach(b=>b.classList.toggle('active',b.dataset.method===editPayMethod));
+  $$('#editCashSourceTabs button').forEach(b=>b.classList.toggle('active',b.dataset.source===editCashSource));
+  $('#editCashSourceWrap').classList.toggle('hidden',editPayMethod==='credit');
+  $('#editCardWrap').classList.toggle('hidden',editPayMethod!=='credit');
+}
+function openExpenseEditor(x,index){
+  editingExpense={x,index,sourceY:cur.y,sourceM:cur.m};
+  $('#editExpenseDate').value=ledgerDateISO(x.date)||localISODate();
+  $('#editExpenseAmount').value=+x.amount||0;
+  $('#editExpenseCategory').value=x.category||'其他';
+  $('#editExpenseNote').value=x.note||'';
+  editPayMethod=x.sourceId||x.source==='credit-card'||Object.values(CARDS).some(c=>c.name===x.method)?'credit':'cash';
+  editCashSource=x.fundingSource==='pocket'?'pocket':x.fundingSource==='linepay'?'linepay':'living';
+  $('#editExpenseCard').value=detectCardId(x);
+  renderExpenseEditorPayment();
+  $('#editExpenseDlg').showModal();
+}
+$$('#editPayMethodTabs button').forEach(b=>b.addEventListener('click',()=>{editPayMethod=b.dataset.method;renderExpenseEditorPayment()}));
+$$('#editCashSourceTabs button').forEach(b=>b.addEventListener('click',()=>{editCashSource=b.dataset.source;renderExpenseEditorPayment()}));
+$('#editExpenseCancel').addEventListener('click',()=>$('#editExpenseDlg').close());
+$('#editExpenseSave').addEventListener('click',()=>{
+  if(!editingExpense)return;
+  const amount=Number($('#editExpenseAmount').value)||0;
+  if(amount<=0){alert('請輸入支出金額');return}
+  const selectedDate=$('#editExpenseDate').value;
+  const dm=selectedDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!dm){alert('請選擇正確日期');return}
+  const targetY=+dm[1],targetM=+dm[2],targetD=+dm[3];
+  const category=$('#editExpenseCategory').value||'其他',note=$('#editExpenseNote').value.trim();
+  const old=editingExpense.x,oldAmount=+old.amount||0;
+  const availablePocket=(+loans.cash||0)+(old.fundingSource==='pocket'?oldAmount:0);
+  const availableLinePay=(+loans.linepayMoney||0)+(old.fundingSource==='linepay'?oldAmount:0);
+  if(editPayMethod==='cash'&&editCashSource==='pocket'&&amount>availablePocket){alert(`手頭上現金目前可用 ${fmt(availablePocket)}，不足以支付修改後金額。`);return}
+  if(editPayMethod==='cash'&&editCashSource==='linepay'&&amount>availableLinePay){alert(`LINE Pay Money 目前可用 ${fmt(availableLinePay)}，不足以支付修改後金額。`);return}
+
+  const sourceData=(editingExpense.sourceY===cur.y&&editingExpense.sourceM===cur.m)?data:loadMonth(editingExpense.sourceY,editingExpense.sourceM);
+  const actualIndex=sourceData.ledger.findIndex(z=>z===old);
+  const idx=actualIndex>=0?actualIndex:editingExpense.index;
+
+  if(old.fundingSource==='pocket')loans.cash=(+loans.cash||0)+oldAmount;
+  else if(old.fundingSource==='linepay')loans.linepayMoney=(+loans.linepayMoney||0)+oldAmount;
+
+  let sourceId=old.sourceId||null;
+  if(editPayMethod==='credit'){
+    const card=$('#editExpenseCard').value;
+    let tx=sourceId?cardTxs.find(t=>t.id===sourceId):null;
+    if(tx){tx.date=selectedDate;tx.card=card;tx.amount=amount;tx.category=category;tx.note=note;tx.synced=true}
+    else{tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date:selectedDate,card,amount,category,note,synced:true,created:+old.created||Date.now()};cardTxs.push(tx);sourceId=tx.id}
+  }else if(sourceId){cardTxs=cardTxs.filter(t=>t.id!==sourceId);sourceId=null}
+
+  if(editPayMethod==='cash'&&editCashSource==='pocket')loans.cash=Math.max(0,(+loans.cash||0)-amount);
+  else if(editPayMethod==='cash'&&editCashSource==='linepay')loans.linepayMoney=Math.max(0,(+loans.linepayMoney||0)-amount);
+  localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
+  localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));
+
+  sourceData.ledger.splice(idx,1);
+  sourceData.finished=false;
+  localStorage.setItem(key(editingExpense.sourceY,editingExpense.sourceM),JSON.stringify(sourceData));
+
+  let targetData=(targetY===editingExpense.sourceY&&targetM===editingExpense.sourceM)?sourceData:loadMonth(targetY,targetM);
+  if(!Array.isArray(targetData.ledger))targetData.ledger=[];
+  const displayDate=`${targetY}/${targetM}/${targetD}`;
+  let updated={amount,category,note:note||(editPayMethod==='credit'?'信用卡消費':editCashSource==='linepay'?'LINE Pay Money 開銷':'現金開銷'),date:displayDate,created:+old.created||Date.now()};
+  if(editPayMethod==='credit')updated={...updated,method:CARDS[$('#editExpenseCard').value].name,source:'credit-card',sourceId,budgetImpact:true};
+  else if(editCashSource==='pocket')updated={...updated,method:'現金',fundingSource:'pocket',budgetImpact:false};
+  else if(editCashSource==='linepay')updated={...updated,method:'LINE Pay Money',fundingSource:'linepay',budgetImpact:false};
+  else updated={...updated,method:'現金',fundingSource:'living',budgetImpact:true};
+  targetData.ledger.push(updated);targetData.finished=false;
+  localStorage.setItem(key(targetY,targetM),JSON.stringify(targetData));
+
+  cur={y:targetY,m:targetM};data=targetData;expenseDetailDate=selectedDate;
+  if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=selectedDate;
+  $('#editExpenseDlg').close();editingExpense=null;render();showView('quick');
+});
 
 // ----- 信用卡 -----
 const CARD_KEY='liyunjia-creditcards-v1';
@@ -453,5 +535,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=35.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=35.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=36.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=36.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
