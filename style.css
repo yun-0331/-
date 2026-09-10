@@ -93,3 +93,7 @@ nav.nav6{grid-template-columns:repeat(6,1fr)}nav.nav6 button>svg{display:block;w
 .linePayMoneyCard{background:linear-gradient(135deg,#fbfff9,#f3faef)}.linePayMoneyCard strong{color:#647b63}.linePayMoneyCard small{color:#778d75}.cashSourceTabs button[data-source="linepay"].active{color:#5f7d5c}
 
 .ccCycleSummary{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.55);font-size:12px}.ccCycleSummary span{opacity:.78}.ccCycleSummary strong{font-size:14px}.ccStatement .ccTitle h2{font-size:24px}.ccStatement .ccTitle h2:before{content:""}
+
+
+/* v34 今日支出明細＋歷史日期查詢 */
+.expenseHistoryBar{margin:12px 0 10px}.expenseHistoryBar>button{width:100%;border:1px solid #e5d6e4;background:#fff;border-radius:14px;padding:11px 12px;color:#76557f;font-weight:800}.expenseHistoryPicker{margin-top:8px;padding:11px;border:1px solid #eadde7;border-radius:15px;background:#faf6fa;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.expenseHistoryPicker[hidden]{display:none}.expenseHistoryPicker label{font-size:10px;color:#857985;font-weight:700}.expenseHistoryPicker input{display:block;width:100%;height:38px;margin-top:4px;border:1px solid #e0d4dd;border-radius:10px;background:#fff;padding:0 9px}.expenseHistoryPicker button{height:38px;border:0;border-radius:10px;background:#eee5f6;color:#76557f;font-weight:800;padding:0 11px}@media(max-width:380px){.expenseHistoryPicker{grid-template-columns:1fr}.expenseHistoryPicker button{width:100%}}
