@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=37.0.0">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=38.0.0">
 <title>一家五口每月開銷明細</title>
 </head>
 <body><div class="app">
@@ -121,11 +121,11 @@
     </div>
   </section>
   <section class="dailyPageCard">
-    <div class="dailyPageHead"><div><small id="dailyListEyebrow">支出明細</small><h2 id="dailyListTitle">今日支出明細</h2></div><b id="dSpent">$0</b></div>
+    <div class="dailyPageHead"><div><small id="dailyListEyebrow">收支明細</small><h2 id="dailyListTitle">今日收支明細</h2></div><b id="dSpent" class="dailyFlowTotals"><span class="incomeTotal">+$0</span><small>收入</small><span class="expenseTotal">-$0</span><small>支出</small></b></div>
     <div class="dailySummary dailySummary4"><div><small>當月生活費額度</small><b id="dailyBudget">$0</b></div><div><small>生活費已花</small><b id="dailySpent">$0</b></div><div><small>手頭現金花費</small><b id="pocketSpent">$0</b></div><div><small>生活費剩餘</small><b id="dailyAvailable">$0</b></div></div>
     <div class="dailyMeter"><div id="dailyMeterFill"></div></div>
     <div class="expenseHistoryBar">
-      <button id="showExpenseHistory" type="button">📅 查詢以往日期支出</button>
+      <button id="showExpenseHistory" type="button">📅 查詢以往日期收支</button>
       <div id="expenseHistoryPicker" class="expenseHistoryPicker" hidden>
         <label>選擇日期<input id="expenseHistoryDate" type="date"></label>
         <button id="backToTodayExpenses" type="button">回到今天</button>
@@ -212,4 +212,4 @@
 <div id="editCashSourceWrap" class="cashSourceWrap"><span class="fieldTitle">現金從哪裡扣？</span><div class="cashSourceTabs" id="editCashSourceTabs"><button type="button" data-source="living">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button><button type="button" data-source="linepay">LINE Pay Money</button></div></div>
 <label id="editCardWrap" class="qCardWrap hidden">信用卡<select id="editExpenseCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option></select></label></div>
 <div class="actions"><button type="button" id="editExpenseCancel" class="soft">取消</button><button type="button" id="editExpenseSave">儲存修改</button></div></form></dialog>
-<script src="./app.js?v=37.0.0"></script></body></html>
+<script src="./app.js?v=38.0.0"></script></body></html>

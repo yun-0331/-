@@ -69,7 +69,7 @@ function ledgerDateISO(v){
 }
 function detailDateLabel(isoDate,type='expense'){
   const m=String(isoDate||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const noun=type==='income'?'收入':'支出';
+  const noun=type==='income'?'收入':type==='both'?'收支':'支出';
   if(!m)return `${noun}明細`;
   const today=localISODate();
   return isoDate===today?`今日${noun}明細`:`${+m[2]}/${+m[3]} ${noun}明細`;
@@ -77,22 +77,22 @@ function detailDateLabel(isoDate,type='expense'){
 function ledger(){
   let l=$('#ledger');
   if(!l)return;
-  const incomeMode=quickEntryType==='income';
-  const sourceRows=incomeMode?data.incomeLedger:data.ledger;
-  const rows=sourceRows.map((x,i)=>({x,i})).filter(r=>ledgerDateISO(r.x.date)===expenseDetailDate)
-    .sort((a,b)=>(+b.x.created||0)-(+a.x.created||0));
-  const total=rows.reduce((s,r)=>s+(+r.x.amount||0),0);
-  if($('#dailyListEyebrow'))$('#dailyListEyebrow').textContent=incomeMode?'收入明細':'支出明細';
-  if($('#dailyListTitle'))$('#dailyListTitle').textContent=detailDateLabel(expenseDetailDate,incomeMode?'income':'expense');
-  if($('#dSpent'))$('#dSpent').textContent=fmt(total);
-  if($('#showExpenseHistory'))$('#showExpenseHistory').textContent=incomeMode?'📅 查詢以往日期收入':'📅 查詢以往日期支出';
-  l.innerHTML=rows.length?'':`<p class="hint">這一天沒有${incomeMode?'收入':'支出'}紀錄。</p>`;
+  const expenseRows=(data.ledger||[]).map((x,i)=>({x,i,type:'expense'})).filter(r=>ledgerDateISO(r.x.date)===expenseDetailDate);
+  const incomeRows=(data.incomeLedger||[]).map((x,i)=>({x,i,type:'income'})).filter(r=>ledgerDateISO(r.x.date)===expenseDetailDate);
+  const rows=[...expenseRows,...incomeRows].sort((a,b)=>(+b.x.created||0)-(+a.x.created||0));
+  const expenseTotal=expenseRows.reduce((s,r)=>s+(+r.x.amount||0),0);
+  const incomeTotal=incomeRows.reduce((s,r)=>s+(+r.x.amount||0),0);
+  if($('#dailyListEyebrow'))$('#dailyListEyebrow').textContent='收支明細';
+  if($('#dailyListTitle'))$('#dailyListTitle').textContent=detailDateLabel(expenseDetailDate,'both');
+  if($('#dSpent'))$('#dSpent').innerHTML=`<span class="incomeTotal">+${fmt(incomeTotal)}</span><small>收入</small><span class="expenseTotal">-${fmt(expenseTotal)}</span><small>支出</small>`;
+  if($('#showExpenseHistory'))$('#showExpenseHistory').textContent='📅 查詢以往日期收支';
+  l.innerHTML=rows.length?'':'<p class="hint">這一天沒有收入或支出紀錄。</p>';
   rows.forEach(r=>{
     let x=r.x,d=document.createElement('div');
-    if(incomeMode){
+    if(r.type==='income'){
       d.className='ledger incomeEntry';
       const destination=x.destination==='pocket'?'手頭上現金':x.destination==='linepay'?'LINE Pay Money':'當月生活費';
-      d.innerHTML=`<div><b>${escapeHtml(x.note||x.category||'收入')}</b><small>${escapeHtml(x.category||'收入')}・存入 ${escapeHtml(destination)}・${escapeHtml(x.date)}</small></div><div><b>+${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="deleteLedger">刪除</button></div></div>`;
+      d.innerHTML=`<div><b>${escapeHtml(x.note||x.category||'收入')}</b><small>${escapeHtml(x.category||'收入')}・存入 ${escapeHtml(destination)}・${escapeHtml(x.date)}</small></div><div><b class="incomeAmount">+${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="deleteLedger">刪除</button></div></div>`;
       d.querySelector('.deleteLedger').onclick=()=>{
         if(!confirm('刪除這筆收入？'))return;
         if(x.destination==='pocket')loans.cash=Math.max(0,(+loans.cash||0)-(+x.amount||0));
@@ -554,5 +554,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=37.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=37.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=38.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=38.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
