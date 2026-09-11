@@ -67,28 +67,47 @@ function ledgerDateISO(v){
   if(m){const p=n=>String(n).padStart(2,'0');return `${cur.y}-${p(+m[1])}-${p(+m[2])}`;}
   return '';
 }
-function expenseDateLabel(isoDate){
+function detailDateLabel(isoDate,type='expense'){
   const m=String(isoDate||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(!m)return '支出明細';
+  const noun=type==='income'?'收入':'支出';
+  if(!m)return `${noun}明細`;
   const today=localISODate();
-  return isoDate===today?'今日支出明細':`${+m[2]}/${+m[3]} 支出明細`;
+  return isoDate===today?`今日${noun}明細`:`${+m[2]}/${+m[3]} ${noun}明細`;
 }
 function ledger(){
   let l=$('#ledger');
   if(!l)return;
-  const rows=data.ledger.map((x,i)=>({x,i})).filter(r=>ledgerDateISO(r.x.date)===expenseDetailDate)
+  const incomeMode=quickEntryType==='income';
+  const sourceRows=incomeMode?data.incomeLedger:data.ledger;
+  const rows=sourceRows.map((x,i)=>({x,i})).filter(r=>ledgerDateISO(r.x.date)===expenseDetailDate)
     .sort((a,b)=>(+b.x.created||0)-(+a.x.created||0));
   const total=rows.reduce((s,r)=>s+(+r.x.amount||0),0);
-  if($('#dailyListTitle'))$('#dailyListTitle').textContent=expenseDateLabel(expenseDetailDate);
+  if($('#dailyListEyebrow'))$('#dailyListEyebrow').textContent=incomeMode?'收入明細':'支出明細';
+  if($('#dailyListTitle'))$('#dailyListTitle').textContent=detailDateLabel(expenseDetailDate,incomeMode?'income':'expense');
   if($('#dSpent'))$('#dSpent').textContent=fmt(total);
-  l.innerHTML=rows.length?'':'<p class="hint">這一天沒有支出紀錄。</p>';
+  if($('#showExpenseHistory'))$('#showExpenseHistory').textContent=incomeMode?'📅 查詢以往日期收入':'📅 查詢以往日期支出';
+  l.innerHTML=rows.length?'':`<p class="hint">這一天沒有${incomeMode?'收入':'支出'}紀錄。</p>`;
   rows.forEach(r=>{
-    let x=r.x,d=document.createElement('div');d.className='ledger';
-    let source=x.fundingSource==='pocket'?'手頭上現金':x.fundingSource==='linepay'?'LINE Pay Money':x.fundingSource==='living'?'當月生活費':'';
-    let methodText=[x.method||'現金',source].filter(Boolean).join('・');
-    d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="editLedger">修改</button><button type="button" class="deleteLedger">刪除</button></div></div>`;
-    d.querySelector('.editLedger').onclick=()=>openExpenseEditor(x,r.i);
-    d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
+    let x=r.x,d=document.createElement('div');
+    if(incomeMode){
+      d.className='ledger incomeEntry';
+      const destination=x.destination==='pocket'?'手頭上現金':x.destination==='linepay'?'LINE Pay Money':'當月生活費';
+      d.innerHTML=`<div><b>${escapeHtml(x.note||x.category||'收入')}</b><small>${escapeHtml(x.category||'收入')}・存入 ${escapeHtml(destination)}・${escapeHtml(x.date)}</small></div><div><b>+${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="deleteLedger">刪除</button></div></div>`;
+      d.querySelector('.deleteLedger').onclick=()=>{
+        if(!confirm('刪除這筆收入？'))return;
+        if(x.destination==='pocket')loans.cash=Math.max(0,(+loans.cash||0)-(+x.amount||0));
+        else if(x.destination==='linepay')loans.linepayMoney=Math.max(0,(+loans.linepayMoney||0)-(+x.amount||0));
+        if(x.destination==='pocket'||x.destination==='linepay')localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
+        data.incomeLedger.splice(r.i,1);save();
+      };
+    }else{
+      d.className='ledger';
+      let source=x.fundingSource==='pocket'?'手頭上現金':x.fundingSource==='linepay'?'LINE Pay Money':x.fundingSource==='living'?'當月生活費':'';
+      let methodText=[x.method||'現金',source].filter(Boolean).join('・');
+      d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="editLedger">修改</button><button type="button" class="deleteLedger">刪除</button></div></div>`;
+      d.querySelector('.editLedger').onclick=()=>openExpenseEditor(x,r.i);
+      d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
+    }
     l.appendChild(d)
   })
 }
@@ -395,7 +414,7 @@ function renderEntryType(){
     ?(quickCashSource==='pocket'?'這筆收入會增加「手頭上現金」。':quickCashSource==='linepay'?'這筆收入會增加「LINE Pay Money」。':'這筆收入會增加「本月目前可用」。')
     :(quickCashSource==='pocket'?'這筆會從「手頭上現金」扣除。':quickCashSource==='linepay'?'這筆會從「LINE Pay Money」扣除。':'這筆會從「本月目前可用」扣除。');
 }
-$$('#entryTypeTabs button').forEach(b=>b.addEventListener('click',()=>{quickEntryType=b.dataset.entry;renderEntryType()}));
+$$('#entryTypeTabs button').forEach(b=>b.addEventListener('click',()=>{quickEntryType=b.dataset.entry;renderEntryType();ledger()}));
 $('#saveQ').addEventListener('click',()=>{
   const amount=Number($('#qAmount').value)||0;
   if(amount<=0){alert(quickEntryType==='income'?'請輸入收入金額':'請輸入開銷金額');$('#qAmount').focus();return}
@@ -439,7 +458,7 @@ $('#saveQ').addEventListener('click',()=>{
   localStorage.setItem(key(entryY,entryM),JSON.stringify(targetData));
   $('#qAmount').value='';$('#qNote').value='';
   if(!sameMonth){cur={y:entryY,m:entryM};data=targetData;}
-  if(quickEntryType==='expense'){expenseDetailDate=selectedDate;if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=expenseDetailDate;}
+  expenseDetailDate=selectedDate;if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=expenseDetailDate;
   render();
 });
 const historyBtn=$('#showExpenseHistory'),historyPicker=$('#expenseHistoryPicker'),historyDate=$('#expenseHistoryDate'),todayBtn=$('#backToTodayExpenses');
@@ -535,5 +554,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=36.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=36.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=37.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=37.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
