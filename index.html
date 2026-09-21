@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=38.0.0">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=39.0.0">
 <title>一家五口每月開銷明細</title>
 </head>
 <body><div class="app">
@@ -61,6 +61,11 @@
       <div class="ccMeta"><label class="closeDayLabel">結帳日 <input id="cathayCloseDay" type="number" min="1" max="31" inputmode="numeric" placeholder="填日"></label><span id="cathayCycle">—</span></div>
       <div class="ccCycleSummary"><span>已結帳｜<b id="cathayClosedCycle">—</b></span><strong id="cathayClosedValue">$0</strong></div><div class="ccFoot">本期帳單預估 <b id="cathayEstimate">$0</b></div>
     </section>
+    <section class="ccStatement yuanta">
+      <div class="ccTitle"><div class="ccLogo">元大</div><div><small>元大信用卡</small><h2 id="yuantaBill">$0</h2></div><span id="yuantaStatus" class="ccStatus">累計中</span></div>
+      <div class="ccMeta"><span>每月 <b>26 日</b>結帳</span><span id="yuantaCycle">—</span></div>
+      <div class="ccCycleSummary"><span>已結帳｜<b id="yuantaClosedCycle">—</b></span><strong id="yuantaClosedValue">$0</strong></div><div class="ccFoot">本期帳單預估 <b id="yuantaEstimate">$0</b></div>
+    </section>
   </div>
 
   <section class="ccPanel debtPanel">
@@ -83,11 +88,11 @@
     <p class="ccEntryHint">這四筆會自動出現在下個月「固定支出／債務」分類，並標示為「自動」。之後本月刷卡金額變動，下月金額會一起更新。</p>
   </section>
 
-  <section class="ccPanel ccInfoOnly"><div class="ccPanelHead"><div><small>消費登錄方式</small><h2>從「今日開銷」統一新增</h2></div></div><p class="ccEntryHint">付款方式選「信用卡」後，可選中國信託、台北富邦、芋泥台北富邦或國泰銀行。信用卡頁只看明細與帳單，不重複新增。</p></section>
+  <section class="ccPanel ccInfoOnly"><div class="ccPanelHead"><div><small>消費登錄方式</small><h2>從「今日開銷」統一新增</h2></div></div><p class="ccEntryHint">付款方式選「信用卡」後，可選中國信託、台北富邦、芋泥台北富邦、國泰世華或元大信用卡。信用卡頁只看明細與帳單，不重複新增。</p></section>
 
   <section class="ccPanel">
     <div class="ccPanelHead"><div><small>本月消費明細</small><h2 id="ccListTitle">2026/9 刷卡紀錄</h2></div><b id="ccListTotal">$0</b></div>
-    <div class="ccFilters"><button data-cardfilter="all" class="active">全部</button><button data-cardfilter="ctbc">中信</button><button data-cardfilter="fubon">富邦</button><button data-cardfilter="yuni_fubon">芋泥富邦</button><button data-cardfilter="cathay">國泰</button></div>
+    <div class="ccFilters"><button data-cardfilter="all" class="active">全部</button><button data-cardfilter="ctbc">中信</button><button data-cardfilter="fubon">富邦</button><button data-cardfilter="yuni_fubon">芋泥富邦</button><button data-cardfilter="cathay">國泰</button><button data-cardfilter="yuanta">元大</button></div>
     <div id="ccLedger" class="ccLedger"></div>
   </section>
   <p class="ccHint">※ 結帳預估依消費日期與各卡結帳日計算；循環利息採約 30 天概算。銀行實際帳單仍可能因入帳日、退款、分期、逐日計息與其他費用不同。</p>
@@ -115,7 +120,7 @@
           <div class="cashSourceTabs" id="cashSourceTabs"><button type="button" data-source="living" class="active">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button><button type="button" data-source="linepay">LINE Pay Money</button></div>
           <small id="cashSourceHint">這筆會從「本月目前可用」扣除。</small>
         </div>
-        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option></select></label>
+        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="yuanta">元大信用卡</option></select></label><label id="qYuantaInstallWrap" class="qCardWrap hidden">元大付款方式<select id="qYuantaInstall"><option value="1">一次付清</option><option value="8">分 8 期</option></select><small class="hint">選「分 8 期」後，系統會從實際應繳月份開始，自動建立連續 8 個月固定支出。</small></label>
       </div>
       <button id="saveQ" class="dailySave">＋ 加入今日開銷</button>
     </div>
@@ -210,6 +215,6 @@
 <label>備註<input id="editExpenseNote"></label>
 <div class="editPayBlock"><span class="fieldTitle">付款方式</span><div class="payMethodTabs" id="editPayMethodTabs"><button type="button" data-method="cash">現金</button><button type="button" data-method="credit">信用卡</button></div>
 <div id="editCashSourceWrap" class="cashSourceWrap"><span class="fieldTitle">現金從哪裡扣？</span><div class="cashSourceTabs" id="editCashSourceTabs"><button type="button" data-source="living">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button><button type="button" data-source="linepay">LINE Pay Money</button></div></div>
-<label id="editCardWrap" class="qCardWrap hidden">信用卡<select id="editExpenseCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option></select></label></div>
+<label id="editCardWrap" class="qCardWrap hidden">信用卡<select id="editExpenseCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="yuanta">元大信用卡</option></select></label></div>
 <div class="actions"><button type="button" id="editExpenseCancel" class="soft">取消</button><button type="button" id="editExpenseSave">儲存修改</button></div></form></dialog>
-<script src="./app.js?v=38.0.0"></script></body></html>
+<script src="./app.js?v=39.0.0"></script></body></html>
