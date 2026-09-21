@@ -334,7 +334,23 @@ function renderLoans(){
   $$('[data-loanid]').forEach(b=>b.onclick=()=>deleteLoanTx(b.dataset.loanid));
 }
 function addLoanTx(){let type=$('#loanType').value,person=$('#loanPerson').value,amount=+$('#loanAmount').value||0,note=$('#loanNote').value.trim(),sync=$('#loanSyncCash').checked;if(amount<=0){alert('請輸入借款或還款金額');return}let before={cash:loans.cash,fund:loans.funds[person]??null,owed:loans.owed[person]||0};if(type==='borrow'){loans.owed[person]=(loans.owed[person]||0)+amount;if(childMap[person])loans.funds[person]=Math.max(0,(+loans.funds[person]||0)-amount);if(sync)loans.cash=(+loans.cash||0)+amount}else{let actual=Math.min(amount,+loans.owed[person]||0);if(actual<=0){alert('這個對象目前沒有尚欠借款');return}amount=actual;loans.owed[person]=Math.max(0,(+loans.owed[person]||0)-amount);if(childMap[person])loans.funds[person]=(+loans.funds[person]||0)+amount;if(sync)loans.cash=Math.max(0,(+loans.cash||0)-amount)}let now=new Date();loans.txs.push({id:'loan-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),type,person,amount,note,sync,date:now.toLocaleDateString('zh-TW',{year:'numeric',month:'numeric',day:'numeric'}),before});$('#loanAmount').value='';$('#loanNote').value='';saveLoans()}
-function deleteLoanTx(id){let i=loans.txs.findIndex(x=>x.id===id);if(i<0)return;let x=loans.txs[i];if(!confirm('刪除這筆借款明細並還原當時的餘額？'))return;let b=x.before||{};if(b.cash!==undefined)loans.cash=+b.cash||0;if(b.owed!==undefined)loans.owed[x.person]=+b.owed||0;if(childMap[x.person]&&b.fund!==null&&b.fund!==undefined)loans.funds[x.person]=+b.fund||0;loans.txs.splice(i,1);saveLoans()}
+function deleteLoanTx(id){
+  let i=loans.txs.findIndex(x=>x.id===id);if(i<0)return;
+  let x=loans.txs[i],amount=+x.amount||0;
+  if(!confirm('刪除這筆借款明細？\n系統會只反向沖銷這一筆造成的借款、孩子可借餘額與手頭現金，不會覆蓋之後的現金異動。'))return;
+  // 不能用新增當下的 before 快照直接覆蓋目前現金，否則這筆之後發生的支出、收入、其他借還款都會被一起洗掉。
+  // 改成針對「這一筆交易」做反向沖銷，讓目前餘額維持正確。
+  if(x.type==='borrow'){
+    loans.owed[x.person]=Math.max(0,(+loans.owed[x.person]||0)-amount);
+    if(childMap[x.person])loans.funds[x.person]=(+loans.funds[x.person]||0)+amount;
+    if(x.sync)loans.cash=Math.max(0,(+loans.cash||0)-amount);
+  }else{
+    loans.owed[x.person]=(+loans.owed[x.person]||0)+amount;
+    if(childMap[x.person])loans.funds[x.person]=Math.max(0,(+loans.funds[x.person]||0)-amount);
+    if(x.sync)loans.cash=(+loans.cash||0)+amount;
+  }
+  loans.txs.splice(i,1);saveLoans();
+}
 
 
 function renderDiagnosis(){
@@ -564,5 +580,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=39.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=39.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=40.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=40.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
