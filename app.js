@@ -2,7 +2,22 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('zh-TW');
 let cur={y:2026,m:9};
 const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=11))?3000:0;
-const cardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
+const baseCardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
+function storedYuantaInstallmentDue(y,m){
+  let txs=[];try{const z=JSON.parse(localStorage.getItem('liyunjia-creditcards-v1')||'[]');if(Array.isArray(z))txs=z}catch(e){}
+  let total=0;
+  for(const tx of txs){
+    if(tx.card!=='yuanta'||+tx.installmentCount!==8)continue;
+    const dm=String(tx.date||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!dm)continue;
+    const sy=+dm[1],sm=+dm[2],sd=+dm[3],firstOffset=sd<=26?1:2;
+    const start=sy*12+(sm-1)+firstOffset;
+    const target=y*12+(m-1),idx=target-start;if(idx<0||idx>=8)continue;
+    const t=Math.max(0,Math.round(+tx.amount||0)),base=Math.floor(t/8);
+    total+=idx===7?t-base*7:base;
+  }
+  return total;
+}
+const cardFeeAmount=(y,m)=>baseCardFeeAmount(y,m)+storedYuantaInstallmentDue(y,m);
 const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
@@ -24,6 +39,8 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   ensureNormal('大寶生活費',1200); ensureNormal('二寶生活費',400);
   const syncTimed=(name,amount,scheduleId)=>{x.expenses=x.expenses.filter(e=>!(e.name===name||e.scheduleId===scheduleId));if(amount>0)x.expenses.push({name,amount,category:'債務',scheduleId})};
   x.expenses=x.expenses.filter(e=>!(e.name==='分期（至115年12月）'||e.scheduleId==='installment-2026-12'));
+  // v41：元大 8 期不再獨立成一列，直接併入『卡費（10月～1月）』固定支出。
+  x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')));
   syncTimed('分期（至115年11月）',installmentAmount(y,m),'installment-2026-11');
   syncTimed('卡費（10月～1月）',cardFeeAmount(y,m),'cardfee-2026-10-2027-01');
   // v24：修正三筆信貸的正確每月繳款金額。
@@ -106,7 +123,7 @@ function ledger(){
       let methodText=[x.method||'現金',source].filter(Boolean).join('・');
       d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="editLedger">修改</button><button type="button" class="deleteLedger">刪除</button></div></div>`;
       d.querySelector('.editLedger').onclick=()=>openExpenseEditor(x,r.i);
-      d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){const oldTx=cardTxs.find(t=>t.id===x.sourceId);if(oldTx?.installmentPlanId)removeYuantaInstallmentSchedule(oldTx.installmentPlanId);cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs))}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
+      d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){const oldTx=cardTxs.find(t=>t.id===x.sourceId);if(oldTx?.installmentPlanId)removeYuantaInstallmentSchedule(oldTx.installmentPlanId);cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));refreshYuantaFixedExpenses()}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
     }
     l.appendChild(d)
   })
@@ -219,7 +236,19 @@ function nextMonthPair(y,m){return m===12?[y+1,1]:[y,m+1]}
 function addMonthsYM(y,m,n){let z=(y*12+(m-1))+n;return [Math.floor(z/12),z%12+1]}
 function yuantaFirstDueMonth(date){const m=String(date||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return nextMonthPair(cur.y,cur.m);const y=+m[1],mo=+m[2],d=+m[3];return addMonthsYM(y,mo,d<=26?1:2)}
 function removeYuantaInstallmentSchedule(planId){if(!planId)return;for(let i=0;i<8;i++){for(let y=2025;y<=2030;y++){for(let m=1;m<=12;m++){const raw=localStorage.getItem(key(y,m));if(!raw)continue;let x;try{x=JSON.parse(raw)}catch(e){continue}if(!Array.isArray(x.expenses))continue;const before=x.expenses.length;x.expenses=x.expenses.filter(e=>e.yuantaInstallmentPlanId!==planId);if(x.expenses.length!==before)localStorage.setItem(key(y,m),JSON.stringify(x));}}}}
-function scheduleYuantaInstallment(tx){if(!tx||tx.card!=='yuanta')return;const count=+tx.installmentCount===8?8:1;const planId=tx.installmentPlanId||(tx.installmentPlanId='yuanta-plan-'+tx.id);removeYuantaInstallmentSchedule(planId);const total=Math.max(0,Math.round(+tx.amount||0));const base=Math.floor(total/count);const [fy,fm]=yuantaFirstDueMonth(tx.date);for(let i=0;i<count;i++){const [y,m]=addMonthsYM(fy,fm,i);const amt=i===count-1?total-base*(count-1):base;const md=loadMonth(y,m);md.expenses=md.expenses.filter(e=>e.yuantaInstallmentPlanId!==planId);md.expenses.push({name:count===8?`元大信用卡｜分期 ${i+1}/8`:'元大信用卡｜本期卡費',amount:amt,category:'債務',scheduleId:`yuanta-${planId}-${i+1}`,yuantaInstallmentPlanId:planId,autoCardId:'yuanta'});md.finished=false;localStorage.setItem(key(y,m),JSON.stringify(md));}}
+function refreshYuantaFixedExpenses(){
+  const months=new Set(['2026-10','2026-11','2026-12','2027-1']);
+  let txs=[];try{const z=JSON.parse(localStorage.getItem('liyunjia-creditcards-v1')||'[]');if(Array.isArray(z))txs=z}catch(e){}
+  for(const tx of txs){if(tx.card!=='yuanta'||+tx.installmentCount!==8)continue;const [fy,fm]=yuantaFirstDueMonth(tx.date);for(let i=0;i<8;i++){const [y,m]=addMonthsYM(fy,fm,i);months.add(`${y}-${m}`)}}
+  for(const ym of months){const [y,m]=ym.split('-').map(Number);const md=loadMonth(y,m);md.finished=false;localStorage.setItem(key(y,m),JSON.stringify(md))}
+}
+function scheduleYuantaInstallment(tx){
+  if(!tx||tx.card!=='yuanta'||+tx.installmentCount!==8)return;
+  tx.installmentPlanId=tx.installmentPlanId||('yuanta-plan-'+tx.id);
+  // 先存卡片交易，再讓固定支出依 8 期排程重新計算。
+  localStorage.setItem('liyunjia-creditcards-v1',JSON.stringify(cardTxs));
+  refreshYuantaFixedExpenses();
+}
 function yuantaInstallmentDueForMonth(y,m){let total=0;for(const tx of cardTxs){if(tx.card!=='yuanta')continue;const count=+tx.installmentCount===8?8:1;const [fy,fm]=yuantaFirstDueMonth(tx.date);for(let i=0;i<count;i++){const [yy,mm]=addMonthsYM(fy,fm,i);if(yy===y&&mm===m){const t=Math.round(+tx.amount||0),base=Math.floor(t/count);total+=i===count-1?t-base*(count-1):base;}}}return total}
 
 function cycleForEndMonth(y,m,closeDay){return statementCycle(y,m,closeDay)}
@@ -580,5 +609,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=40.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=40.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=41.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=41.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
