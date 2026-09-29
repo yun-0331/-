@@ -338,6 +338,8 @@ function renderCards(){
   $('#syncCtbc').textContent=fmt(ctbcDueForNextFixed());
   const autoMin=ctbcAutoMinDue();
   const autoMinEl=$('#ctbcAutoMinDue'); if(autoMinEl)autoMinEl.textContent=fmt(autoMin);
+  const cardMinEl=$('#ctbcCardMinDue'); if(cardMinEl)cardMinEl.textContent=fmt(ctbcDueForNextFixed());
+  const fubonInstCard=$('#fubonCardInstallment'); if(fubonInstCard)fubonInstCard.textContent=fmt(fubonInstallmentDue());
   const totalEstEl=$('#ctbcTotalEstimate'); if(totalEstEl)totalEstEl.textContent=fmt(estimates.ctbc);
   $('#syncFubon').textContent=fmt(estimates.fubon);$('#syncYuniFubon').textContent=fmt(estimates.yuni_fubon);$('#syncCathay').textContent=fmt(estimates.cathay);
   syncCardsToNextMonth();
@@ -620,5 +622,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=42.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=42.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=43.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=43.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
