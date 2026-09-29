@@ -24,7 +24,7 @@ const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
 const catIcon=c=>`<svg class="catIcon" viewBox="0 0 24 24"><path d="${CAT_ICON[c]||CAT_ICON.其他}"/></svg>`;
 const key=(y=cur.y,m=cur.m)=>`liyunjia-${y}-${String(m).padStart(2,'0')}`;
-const fresh=(y=cur.y,m=cur.m)=>({income:{husband:67000,wife:33000,other:8000},expenses:defaultsFor(y,m).map(([name,amount,category])=>({name,amount,category})),ledger:[],incomeLedger:[],finished:false,savedAmount:0,step:1});
+const fresh=(y=cur.y,m=cur.m)=>({income:{husband:67000,wife:33000,other:8000},expenses:defaultsFor(y,m).map(([name,amount,category])=>({name,amount,category})),ledger:[],incomeLedger:[],finished:false,savedAmount:0,throttleLimit:0,step:1});
 function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.getItem(key(y,m))||'null')}catch(e){}
   if(!x)x=fresh(y,m); if(!x.income)x.income=fresh(y,m).income;
   ['husband','wife','other'].forEach(k=>{if(x.income[k]===undefined||x.income[k]===null)x.income[k]=fresh(y,m).income[k]});
@@ -40,6 +40,7 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   const syncTimed=(name,amount,scheduleId)=>{x.expenses=x.expenses.filter(e=>!(e.name===name||e.scheduleId===scheduleId));if(amount>0)x.expenses.push({name,amount,category:'債務',scheduleId})};
   x.expenses=x.expenses.filter(e=>!(e.name==='分期（至115年12月）'||e.scheduleId==='installment-2026-12'));
   // v41：元大 8 期不再獨立成一列，直接併入『卡費（10月～1月）』固定支出。
+  // v45：下月固定支出中的中國信託、台北富邦卡費可手動修正，手動值不再被自動同步覆蓋。
   x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')));
   syncTimed('分期（至115年11月）',installmentAmount(y,m),'installment-2026-11');
   syncTimed('卡費（10月～1月）',cardFeeAmount(y,m),'cardfee-2026-10-2027-01');
@@ -49,7 +50,7 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   const fixedOrder=['先生生活費','孝親費','大寶生活費','二寶生活費','保險','信貸(1)','信貸(2)','信貸(3)','分期（至115年11月）','卡費（10月～1月）','補習與英文','ETC 與加油','電話','長照','捐款與 ETF'];
   x.expenses.sort((a,b)=>{let ai=fixedOrder.indexOf(a.name),bi=fixedOrder.indexOf(b.name);ai=ai<0?999:ai;bi=bi<0?999:bi;return ai-bi});
   x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaultsFor(y,m)[i]?.[2]||'其他'}));
-  if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
+  if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(x.throttleLimit===undefined)x.throttleLimit=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
 let data=loadMonth();
 const inc=()=>+data.income.husband + +data.income.wife + +data.income.other;
 function dateSortValue(v){
@@ -68,11 +69,16 @@ const SAVINGS_RATE=10;
 const suggestedSavings=()=>Math.max(0,Math.round(inc()*SAVINGS_RATE/100));
 const saved=()=>Math.max(0,+data.savedAmount||0);
 const baseAvailable=()=>Math.max(0,remain()-saved());
+const cashGap=()=>inc()-fixed();
+const throttleLimit=()=>Math.max(0,+data.throttleLimit||0);
+function weekRange(d=new Date()){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const day=(x.getDay()+6)%7;const start=new Date(x);start.setDate(x.getDate()-day);const end=new Date(start);end.setDate(start.getDate()+6);return {start,end}}
+function throttleSpent(){const now=new Date(),wr=weekRange(now);return data.ledger.reduce((s,x)=>{if(x.budgetImpact===false)return s;const t=dateSortValue(x.date);return t>=wr.start.getTime()&&t<=wr.end.getTime()+86399999?s+(+x.amount||0):s},0)}
+function monthlyNewBorrow(){return loans?.txs?.reduce((s,x)=>{if(x.type!=='borrow')return s;const m=String(x.date||'').match(/^(\d{4})[\/-](\d{1,2})/);return m&&+m[1]===cur.y&&+m[2]===cur.m?s+(+x.amount||0):s},0)||0}
 const dailyBudget=()=>baseAvailable();
 const avail=()=>dailyBudget()+livingExtraIncome()-spent();
 function save(){localStorage.setItem(key(),JSON.stringify(data));render()}
 function setStep(n){data.step=n;localStorage.setItem(key(),JSON.stringify(data));$$('.stepPanel').forEach(p=>p.classList.toggle('active',+p.dataset.panel===n));$$('#steps button').forEach(b=>b.classList.toggle('now',+b.dataset.step===n))}
-function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b>${x.autoCardId?'<em class="autoBadge">自動</em>':x.scheduleId?'<em class="autoBadge">排程</em>':''}</span><select class="catSelect" ${(x.autoCardId||x.scheduleId)?'disabled':''}>${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}" ${(x.autoCardId||x.scheduleId)?'readonly':''}>${(x.autoCardId||x.scheduleId)?'':'<button class="deleteExpense">×</button>'}`;d.querySelector('input').onchange=e=>{if(x.autoCardId||x.scheduleId)return;data.expenses[i].amount=+e.target.value||0;save()};d.querySelector('select').onchange=e=>{if(x.autoCardId||x.scheduleId)return;data.expenses[i].category=e.target.value;save()};let del=d.querySelector('button');if(del)del.onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
+function expenses(){let g=$('#expenses');g.innerHTML='';data.expenses.forEach((x,i)=>{let d=document.createElement('div');d.className='expense';let opts=CATS.map(c=>`<option ${x.category===c?'selected':''}>${c}</option>`).join('');const cardManual=x.autoCardId==='ctbc'||x.autoCardId==='fubon';const locked=(x.autoCardId&&!cardManual)||x.scheduleId;const badge=x.autoCardId?(cardManual?'<em class="autoBadge">可手動</em>':'<em class="autoBadge">自動</em>'):x.scheduleId?'<em class="autoBadge">排程</em>':'';d.innerHTML=`<div class="expenseMain"><span class="expenseName cat-${x.category}">${catIcon(x.category)}<b>${x.name}</b>${badge}</span><select class="catSelect" ${(x.autoCardId||x.scheduleId)?'disabled':''}>${opts}</select></div><input type="number" inputmode="numeric" value="${x.amount}" ${locked?'readonly':''}>${(x.autoCardId||x.scheduleId)?'':'<button class="deleteExpense">×</button>'}`;d.querySelector('input').onchange=e=>{if(locked)return;data.expenses[i].amount=Math.max(0,+e.target.value||0);if(cardManual){data.expenses[i].manualFixed=true;data.expenses[i].manualFixedAmount=data.expenses[i].amount}save()};d.querySelector('select').onchange=e=>{if(x.autoCardId||x.scheduleId)return;data.expenses[i].category=e.target.value;save()};let del=d.querySelector('button');if(del)del.onclick=()=>{if(confirm(`刪除「${x.name}」？`)){data.expenses.splice(i,1);save()}};g.appendChild(d)});renderCategorySummary()}
 function renderCategorySummary(){let g=$('#categorySummary');let totals=Object.fromEntries(CATS.map(c=>[c,0]));data.expenses.forEach(e=>totals[e.category||'其他']+=+e.amount||0);g.innerHTML=CATS.map(c=>`<div class="catSummary cat-${c}">${catIcon(c)}<div><small>${c}</small><b>${fmt(totals[c])}</b></div></div>`).join('')}
 function localISODate(d=new Date()){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
 let expenseDetailDate=localISODate();
@@ -317,8 +323,11 @@ function syncCardsToNextMonth(){
   const labels={ctbc:'信用卡｜中國信託',fubon:'信用卡｜台北富邦',yuni_fubon:'信用卡｜芋泥台北富邦',cathay:'信用卡｜國泰世華',yuanta:'信用卡｜元大'};
   for(const id of Object.keys(CARDS)){
     if(id==='yuanta')continue;
-    const amount=cardDueForNextFixed(id);
+    const autoAmount=cardDueForNextFixed(id);
     const idx=target.expenses.findIndex(e=>e.autoCardId===id);
+    const existing=idx>=0?target.expenses[idx]:null;
+    const canManual=id==='ctbc'||id==='fubon';
+    const amount=(canManual&&existing?.manualFixed)?Math.max(0,+existing.manualFixedAmount||0):autoAmount;
     const row={name:labels[id],amount,category:'債務',autoCardId:id,autoSourceMonth:`${cur.y}-${pad(cur.m)}`};
     if(idx>=0)target.expenses[idx]={...target.expenses[idx],...row}; else target.expenses.push(row);
   }
@@ -434,20 +443,30 @@ function renderDiagnosis(){
   if(!messages.length) messages.push({c:'本月狀況',v:0,text:'目前記錄多集中在必要、醫療或孩子相關項目，暫時沒有很明顯適合直接刪減的支出。可以繼續記帳，資料越完整判斷越準。'});
   advice.innerHTML=messages.slice(0,4).map((x,i)=>`<div class="diagAdviceItem ${i===0?'priority':''}"><span>${i===0?'優先看看':'再檢查'}</span><b>${escapeHtml(x.c)}</b><p>${x.text}</p></div>`).join('');
 }
+function renderThrottle(){
+  const gap=cashGap(),limit=throttleLimit(),weekly=limit>0?Math.round(limit/4.345):0,used=throttleSpent(),left=weekly-used,borrowed=monthlyNewBorrow();
+  const box=$('#cashFlowControl');if(!box)return;
+  $('#flowIncome').textContent=fmt(inc());$('#flowFixed').textContent=fmt(fixed());
+  const g=$('#flowGap');g.textContent=(gap<0?'-':'')+fmt(Math.abs(gap));g.classList.toggle('negative',gap<0);
+  $('#throttleLimit').value=limit||'';$('#weeklyLimit').textContent=weekly?fmt(weekly):'尚未設定';$('#weeklyUsed').textContent=fmt(used);$('#weeklyLeft').textContent=weekly?(left>=0?fmt(left):'-'+fmt(Math.abs(left))):'—';
+  $('#monthlyBorrowed').textContent=fmt(borrowed);$('#borrowGoal').textContent=borrowed>0?'本月已有新增借款':'目前達成：新增借款 $0';
+  const saveHint=$('#savingModeHint');if(saveHint)saveHint.textContent=gap<0?'本月固定支出已高於收入，先補足現金流缺口；建議存款暫不列為優先。':'現金流為正時，再依實際狀況安排儲蓄。';
+}
 function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=dailyBudget(),sv=saved(),pct=db>0?Math.min(100,Math.max(0,spent()/db*100)):0;
  $('#month').textContent=`${cur.y}/${cur.m}`;$('#husband').value=data.income.husband;$('#wife').value=data.income.wife;$('#other').value=data.income.other;
- $('#heroAvail').textContent=fmt(Math.max(0,a));$('#heroSub').textContent=`收入 ${fmt(inc())}・固定支出 ${fmt(fixed())}・已花 ${fmt(spent())}`;$('#meterFill').style.width=pct+'%';
+ $('#heroAvail').textContent=cashGap()<0?'-'+fmt(Math.abs(cashGap())):fmt(Math.max(0,a));$('#heroSub').textContent=`收入 ${fmt(inc())}・固定支出 ${fmt(fixed())}・已花 ${fmt(spent())}`;$('#meterFill').style.width=pct+'%';
  $('#dailyPageAvail').textContent=fmt(Math.max(0,a));$('#dailyPageSpent').textContent=fmt(allSpent());$('#quickCashView').textContent=fmt(loans.cash);$('#quickCashOnHand').value=loans.cash;$('#quickLinePayView').textContent=fmt(loans.linepayMoney);$('#quickLinePayMoney').value=loans.linepayMoney;$('#dailyToday').textContent=new Date().toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',weekday:'short'});$('#dailyBudget').textContent=fmt(db);$('#dailySpent').textContent=fmt(spent());$('#pocketSpent').textContent=fmt(pocketSpent());$('#dailyAvailable').textContent=fmt(Math.max(0,a));$('#dailyMeterFill').style.width=pct+'%';ledger();
- $('#sIncome').textContent=fmt(inc());$('#sRemain').textContent=fmt(Math.max(0,r));$('#sFixed').textContent=fmt(fixed());$('#sDone').textContent=data.finished?'✓ 確認':'待確認';
+ $('#sIncome').textContent=fmt(inc());$('#sRemain').textContent=r<0?'-'+fmt(Math.abs(r)):fmt(r);$('#sFixed').textContent=fmt(fixed());$('#sDone').textContent=data.finished?'✓ 確認':'待確認';
  $('#incomeTotal').textContent=fmt(inc());$('#remainSummary').textContent=fmt(baseAvailable());$('#fixedTotal').textContent=fmt(fixed());$('#doneSummary').textContent=data.finished?'✓ 確認':'待確認';$('#availIncome').textContent=fmt(inc());$('#availFixed').textContent=fmt(fixed());$('#suggestedSavings').textContent=fmt(suggestedSavings());$('#availSaved').textContent=fmt(sv);$('#availSpend').textContent=fmt(baseAvailable());
  
- $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=fmt(Math.max(0,r));$('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fSaved').textContent=fmt(sv);$('#savedAmount').value=sv;
+ $('#miniIncome').textContent=fmt(inc());$('#miniFixed').textContent=fmt(fixed());$('#miniRemain').textContent=r<0?'-'+fmt(Math.abs(r)):fmt(r);$('#fIncome').textContent=fmt(inc());$('#fFixed').textContent=fmt(fixed());$('#fSpend').textContent=fmt(db);$('#fSaved').textContent=fmt(sv);$('#savedAmount').value=sv;
  $('#diagIncome').textContent=fmt(inc());$('#diagFixed').textContent=fmt(fixed());$('#diagSpent').textContent=fmt(allSpent());$('#diagAvail').textContent=fmt(Math.max(0,a));$('#diagMsg').innerHTML=a>=0?`扣除固定支出、已存入儲蓄與本月生活開銷後，目前還有 <b>${fmt(a)}</b> 可以使用。`:`本月生活開銷已超過設定額度 <b>${fmt(Math.abs(a))}</b>。`;renderDiagnosis();
- expenses();setStep(data.step||1);renderCards();renderLoans();updateSavingsProgress();renderArchive()}
+ renderThrottle();expenses();setStep(data.step||1);renderCards();renderLoans();updateSavingsProgress();renderArchive()}
 
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
 $('#savedAmount').onchange=()=>{data.savedAmount=Math.max(0,+$('#savedAmount').value||0);data.finished=false;save()};
+$('#throttleLimit').onchange=()=>{data.throttleLimit=Math.max(0,+$('#throttleLimit').value||0);save()};
 // v28: 修正「新增固定支出」按鈕。開啟輸入視窗，新增後立即存入當月 localStorage。
 $('#addExpense').addEventListener('click',()=>{
   $('#eName').value='';
@@ -642,5 +661,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=44.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=44.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=46.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=46.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
