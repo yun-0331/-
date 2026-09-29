@@ -525,6 +525,17 @@ renderEntryType();
 if($('#qDate'))$('#qDate').value=localISODate();
 $('#quickCashOnHand').onchange=()=>{loans.cash=Math.max(0,+$('#quickCashOnHand').value||0);saveLoans();render()};
 $('#quickLinePayMoney').onchange=()=>{loans.linepayMoney=Math.max(0,+$('#quickLinePayMoney').value||0);saveLoans();render()};
+// v42：孩子戶頭「可週轉餘額」是使用者可手動校正的實際餘額。
+// 原本欄位沒有把手動輸入寫回 localStorage，畫面一重繪就會跳回舊金額；現在包含輸入 0 都會確實保存。
+[['fundBig','大寶'],['fundSecond','二寶'],['fundThird','三寶']].forEach(([id,person])=>{
+  const el=$('#'+id); if(!el)return;
+  el.onchange=()=>{loans.funds[person]=Math.max(0,Number(el.value)||0);saveLoans()};
+});
+// 欠款餘額也維持可手動校正，輸入 0 必須視為有效值而不是回填舊資料。
+[['oweSister','姐姐'],['oweBig','大寶'],['oweSecond','二寶'],['oweThird','三寶']].forEach(([id,person])=>{
+  const el=$('#'+id); if(!el)return;
+  el.onchange=()=>{loans.owed[person]=Math.max(0,Number(el.value)||0);saveLoans()};
+});
 $('#saveLoan').onclick=addLoanTx;
 function move(n){cur.m+=n;if(cur.m<1){cur.m=12;cur.y--}if(cur.m>12){cur.m=1;cur.y++}data=loadMonth();const now=new Date();expenseDetailDate=(now.getFullYear()===cur.y&&now.getMonth()+1===cur.m)?localISODate():`${cur.y}-${pad(cur.m)}-01`;if($('#expenseHistoryDate'))$('#expenseHistoryDate').value=expenseDetailDate;render()};$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);
 
@@ -609,5 +620,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=41.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=41.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=42.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=42.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
