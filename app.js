@@ -213,7 +213,7 @@ $('#editExpenseSave').addEventListener('click',()=>{
 // ----- 信用卡 -----
 const CARD_KEY='liyunjia-creditcards-v1';
 const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
-const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17};
+const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
 function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
@@ -298,6 +298,12 @@ function ctbcDueForNextFixed(){
 }
 function cardDueForNextFixed(cardId){
   if(cardId==='ctbc')return ctbcDueForNextFixed();
+  if(cardId==='fubon'){
+    const [ny,nm]=nextMonthYM();
+    const ym=`${ny}-${pad(nm)}`;
+    const actual=Math.max(0,+cardSettings.fubonActualDue||0);
+    if(actual>0 && cardSettings.fubonActualDueYM===ym)return actual;
+  }
   return cardEstimate(cardId);
 }
 function syncCardsToNextMonth(){
@@ -332,7 +338,7 @@ function renderCards(){
     let cv=$(`#${id}ClosedValue`),cc=$(`#${id}ClosedCycle`);if(cv)cv.textContent=fmt(closedSpend);if(cc)cc.textContent=closedCycle;
     let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
   }
-  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
+  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonActualDue').value=cardSettings.fubonActualDue||'';$('#fubonActualDueYM').value=cardSettings.fubonActualDueYM||'';$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
   const [ny,nm]=nextMonthYM();
   $('#ccSyncMonth').textContent=`${ny}/${nm}`;
   $('#syncCtbc').textContent=fmt(ctbcDueForNextFixed());
@@ -341,12 +347,26 @@ function renderCards(){
   const cardMinEl=$('#ctbcCardMinDue'); if(cardMinEl)cardMinEl.textContent=fmt(ctbcDueForNextFixed());
   const fubonInstCard=$('#fubonCardInstallment'); if(fubonInstCard)fubonInstCard.textContent=fmt(fubonInstallmentDue());
   const totalEstEl=$('#ctbcTotalEstimate'); if(totalEstEl)totalEstEl.textContent=fmt(estimates.ctbc);
-  $('#syncFubon').textContent=fmt(estimates.fubon);$('#syncYuniFubon').textContent=fmt(estimates.yuni_fubon);$('#syncCathay').textContent=fmt(estimates.cathay);
+  $('#syncFubon').textContent=fmt(cardDueForNextFixed('fubon'));$('#syncYuniFubon').textContent=fmt(estimates.yuni_fubon);$('#syncCathay').textContent=fmt(estimates.cathay);
   syncCardsToNextMonth();
   let filtered=monthItems.filter(x=>cardFilter==='all'||x.card===cardFilter).sort((a,b)=>dateSortValue(b.date)-dateSortValue(a.date)||(+b.created||0)-(+a.created||0));let el=$('#ccLedger');if(!filtered.length){el.innerHTML='<div class="ccEmpty">這個月還沒有信用卡消費；請從「今日開銷」新增。</div>';return}el.innerHTML=filtered.map(x=>`<div class="ccTx readOnly"><div class="ccTxDate">${shortDate(x.date)}</div><div class="ccTxInfo"><b>${escapeHtml(x.note||x.category||'刷卡')}</b><small>${escapeHtml(CARDS[x.card]?.name||'信用卡')}・${escapeHtml(x.category||'其他')}${+x.installmentCount===8?'・分8期':''}</small></div><div class="ccTxAmount">${fmt(x.amount)}</div></div>`).join('')
 }
 function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function defaultCardDate(){let now=new Date(),same=now.getFullYear()===cur.y&&now.getMonth()+1===cur.m;return same?iso(cur.y,cur.m,now.getDate()):iso(cur.y,cur.m,1)}
+
+
+// 信用卡設定：輸入後立即保存，並重新同步下月固定支出。
+const cardSettingInputs={
+  ctbcCarry:'ctbcCarry',ctbcMinDue:'ctbcMinDue',fubonCarry:'fubonCarry',
+  fubonInst1Amount:'fubonInst1Amount',fubonInst1Count:'fubonInst1Count',
+  fubonInst2Amount:'fubonInst2Amount',fubonInst2Count:'fubonInst2Count',
+  yuniFubonCloseDay:'yuniFubonCloseDay',cathayCloseDay:'cathayCloseDay',
+  fubonActualDue:'fubonActualDue'
+};
+for(const [id,k] of Object.entries(cardSettingInputs)){
+  const el=$('#'+id);if(el)el.addEventListener('change',()=>{cardSettings[k]=Math.max(0,+el.value||0);localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()});
+}
+const fubonDueYM=$('#fubonActualDueYM');if(fubonDueYM)fubonDueYM.addEventListener('change',()=>{cardSettings.fubonActualDueYM=fubonDueYM.value;localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()});
 
 // ----- 借款 / 手頭現金 -----
 const LOAN_KEY='liyunjia-loans-v1';
@@ -622,5 +642,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=43.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=43.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=44.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=44.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
