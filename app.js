@@ -74,11 +74,13 @@ function weekRange(d=new Date()){const x=new Date(d.getFullYear(),d.getMonth(),d
 function inCurrentWeek(date){const wr=weekRange(new Date()),t=dateSortValue(date);return t>=wr.start.getTime()&&t<=wr.end.getTime()+86399999}
 // 節流只看「手頭上現金」：信用卡、當月生活費、LINE Pay Money 都不列入。
 function throttleSpent(){return data.ledger.reduce((s,x)=>x.fundingSource==='pocket'&&inCurrentWeek(x.date)?s+(+x.amount||0):s,0)}
-function weeklyPocketIncome(){return data.incomeLedger.reduce((s,x)=>x.destination==='pocket'&&inCurrentWeek(x.date)?s+(+x.amount||0):s,0)}
-function weeklySyncedLoans(){return loans?.txs?.reduce((o,x)=>{if(!x.sync||!inCurrentWeek(x.date))return o;const a=+x.amount||0;if(x.type==='borrow')o.borrow+=a;else o.repay+=a;return o},{borrow:0,repay:0})||{borrow:0,repay:0}}
-// 本週預算 = 週初原本的手頭現金。反推時排除本週後來新增的借款，避免「借越多、預算越高」。
-function weeklyCashBudget(){const l=weeklySyncedLoans();return Math.max(0,(+loans.cash||0)+throttleSpent()-weeklyPocketIncome()-l.borrow+l.repay)}
-function monthlyNewBorrow(){return loans?.txs?.reduce((s,x)=>{if(x.type!=='borrow')return s;const m=String(x.date||'').match(/^(\d{4})[\/-](\d{1,2})/);return m&&+m[1]===cur.y&&+m[2]===cur.m?s+(+x.amount||0):s},0)||0}
+// 本週預算 = 現在手頭現金 + 本週已用掉的手頭現金；因此本週剩餘會與目前手頭現金一致。
+function weeklyCashBudget(){return Math.max(0,(+loans.cash||0)+throttleSpent())}
+function monthlyNewBorrow(){
+  const fromBorrowTab=loans?.txs?.reduce((s,x)=>{if(x.type!=='borrow')return s;const m=String(x.date||'').match(/^(\d{4})[\/-](\d{1,2})/);return m&&+m[1]===cur.y&&+m[2]===cur.m?s+(+x.amount||0):s},0)||0;
+  const quickBorrow=(data.incomeLedger||[]).reduce((s,x)=>{const m=String(x.date||'').match(/^(\d{4})[\/-](\d{1,2})/);return x.category==='借款'&&m&&+m[1]===cur.y&&+m[2]===cur.m?s+(+x.amount||0):s},0);
+  return fromBorrowTab+quickBorrow;
+}
 const dailyBudget=()=>baseAvailable();
 const avail=()=>dailyBudget()+livingExtraIncome()-spent();
 function save(){localStorage.setItem(key(),JSON.stringify(data));render()}
@@ -497,8 +499,10 @@ $$('#payMethodTabs button').forEach(b=>b.onclick=()=>{quickPayMethod=b.dataset.m
 $$('#cashSourceTabs button').forEach(b=>b.onclick=()=>{quickCashSource=b.dataset.source;$$('#cashSourceTabs button').forEach(x=>x.classList.toggle('active',x===b));$('#cashSourceHint').textContent=quickCashSource==='pocket'?`這筆會從手頭上現金 ${fmt(loans.cash)} 扣除，不重複扣當月生活費。`:quickCashSource==='linepay'?`這筆會從 LINE Pay Money ${fmt(loans.linepayMoney)} 扣除，不重複扣當月生活費。`:'這筆會從「本月目前可用」扣除。'});
 let quickEntryType='expense';
 const expenseCategories=['餐飲','購物','交通','小孩','生活','醫療','其他'];
-const incomeCategories=['薪資','補貼','退款','獎金','現金回饋','其他收入'];
+const incomeCategories=['薪資','補貼','退款','獎金','現金回饋','借款','其他收入'];
 function setQuickCategories(list){const sel=$('#qCategory');const keep=sel.value;sel.innerHTML=list.map(x=>`<option>${x}</option>`).join('');if(list.includes(keep))sel.value=keep}
+function applyBorrowIncomeMode(){if(quickEntryType!=='income'||$('#qCategory').value!=='借款')return;quickCashSource='pocket';$$('#cashSourceTabs button').forEach(x=>x.classList.toggle('active',x.dataset.source==='pocket'));$('#cashSourceHint').textContent='借款會直接加入「手頭上現金」，並列入本月新增借款；不會算成薪資等真正收入。'}
+$('#qCategory').addEventListener('change',applyBorrowIncomeMode);
 function renderEntryType(){
   const income=quickEntryType==='income';
   $$('#entryTypeTabs button').forEach(x=>x.classList.toggle('active',x.dataset.entry===quickEntryType));
@@ -512,6 +516,7 @@ function renderEntryType(){
   $('#cashSourceHint').textContent=income
     ?(quickCashSource==='pocket'?'這筆收入會增加「手頭上現金」。':quickCashSource==='linepay'?'這筆收入會增加「LINE Pay Money」。':'這筆收入會增加「本月目前可用」。')
     :(quickCashSource==='pocket'?'這筆會從「手頭上現金」扣除。':quickCashSource==='linepay'?'這筆會從「LINE Pay Money」扣除。':'這筆會從「本月目前可用」扣除。');
+  applyBorrowIncomeMode();
 }
 $$('#entryTypeTabs button').forEach(b=>b.addEventListener('click',()=>{quickEntryType=b.dataset.entry;renderEntryType();ledger()}));
 $('#saveQ').addEventListener('click',()=>{
@@ -529,7 +534,8 @@ $('#saveQ').addEventListener('click',()=>{
   if(!Array.isArray(targetData.incomeLedger))targetData.incomeLedger=[];
   if(!Array.isArray(targetData.ledger))targetData.ledger=[];
   if(quickEntryType==='income'){
-    const destination=quickCashSource==='pocket'?'pocket':quickCashSource==='linepay'?'linepay':'living';
+    const isBorrowing=category==='借款';
+    const destination=isBorrowing?'pocket':(quickCashSource==='pocket'?'pocket':quickCashSource==='linepay'?'linepay':'living');
     if(destination==='pocket'){
       loans.cash=(+loans.cash||0)+amount;
       localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
@@ -537,7 +543,7 @@ $('#saveQ').addEventListener('click',()=>{
       loans.linepayMoney=(+loans.linepayMoney||0)+amount;
       localStorage.setItem(LOAN_KEY,JSON.stringify(loans));
     }
-    targetData.incomeLedger.push({id:'inc-'+Date.now(),amount,category,note:note||category||'收入',destination,date:displayDate,created:Date.now()});
+    targetData.incomeLedger.push({id:'inc-'+Date.now(),amount,category,note:note||category||'收入',destination,isBorrowing,date:displayDate,created:Date.now()});
   }else if(quickPayMethod==='credit'){
     const card=$('#qCard').value,date=selectedDate,tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};
     if(card==='yuanta'){tx.installmentCount=+$('#qYuantaInstall').value===8?8:1;tx.installmentPlanId='yuanta-plan-'+tx.id;}
@@ -638,7 +644,7 @@ async function importBackupFile(file){if(!file)return;try{const x=JSON.parse(awa
 function monthTop3(){let t={};data.ledger.forEach(x=>{let c=x.category||'其他';t[c]=(t[c]||0)+(+x.amount||0)});return Object.entries(t).sort((a,b)=>b[1]-a[1]).slice(0,3)}
 function renderArchive(){const box=$('#archiveSummary'),hist=$('#archiveHistory');if(!box||!hist)return;let a=Math.max(0,avail());box.innerHTML=`<div><small>本月收入</small><b>${fmt(inc()+livingExtraIncome()+pocketExtraIncome()+linepayExtraIncome())}</b></div><div><small>固定支出</small><b>${fmt(fixed())}</b></div><div><small>生活開銷</small><b>${fmt(allSpent())}</b></div><div><small>月底目前結餘</small><b>${fmt(a)}</b></div>`;let rows=Object.values(monthArchives).sort((a,b)=>b.key.localeCompare(a.key));hist.innerHTML=rows.length?rows.slice(0,12).map(x=>`<div class="archiveRow"><div><b>${x.key} 月報</b><small>支出 ${fmt(x.spent)}・儲蓄 ${fmt(x.saved)}</small></div><b>剩 ${fmt(x.available)}</b></div>`).join(''):'<p class="hint">還沒有封存過月份。</p>'}
 function archiveCurrentMonth(){let k=`${cur.y}-${String(cur.m).padStart(2,'0')}`,available=Math.max(0,avail()),action=$('#monthEndAction')?.value||'none';if(monthArchives[k]&&!confirm(`${k} 已封存過，要更新這份月報嗎？`))return;monthArchives[k]={key:k,income:inc()+livingExtraIncome()+pocketExtraIncome()+linepayExtraIncome(),fixed:fixed(),spent:allSpent(),saved:saved(),available,top3:monthTop3(),action,archivedAt:new Date().toISOString()};localStorage.setItem(ARCHIVE_KEY,JSON.stringify(monthArchives));if(action==='savings'&&available>0){data.savedAmount=saved()+available;save()}else if(action==='next'&&available>0){let nm=cur.m+1,ny=cur.y;if(nm>12){nm=1;ny++}let nk=`liyunjia-${ny}-${String(nm).padStart(2,'0')}`;let nx;try{nx=JSON.parse(localStorage.getItem(nk)||'null')}catch(e){}if(!nx)nx=fresh(ny,nm);nx.incomeLedger=Array.isArray(nx.incomeLedger)?nx.incomeLedger:[];nx.incomeLedger.push({amount:available,category:'其他收入',destination:'living',note:'上月結餘轉入',date:`${ny}/${nm}/1`,created:Date.now()});localStorage.setItem(nk,JSON.stringify(nx))}else if(action.startsWith('loan')&&available>0){let bl=bankLoans.find(x=>x.id===action);if(bl){bl.principal=Math.max(0,(+bl.principal||0)-available);localStorage.setItem(BANK_LOAN_KEY,JSON.stringify(bankLoans))}}localStorage.setItem(ARCHIVE_KEY,JSON.stringify(monthArchives));renderArchive();renderBankLoans();alert('本月報表已封存。')}
-function pocketExtraIncome(){return data.incomeLedger.filter(x=>x.destination==='pocket').reduce((s,x)=>s+(+x.amount||0),0)}
+function pocketExtraIncome(){return data.incomeLedger.filter(x=>x.destination==='pocket'&&x.category!=='借款').reduce((s,x)=>s+(+x.amount||0),0)}
 function linepayExtraIncome(){return data.incomeLedger.filter(x=>x.destination==='linepay').reduce((s,x)=>s+(+x.amount||0),0)}
 function updateSavingsProgress(){let target=suggestedSavings(),sv=saved(),pct=target>0?Math.min(100,Math.round(sv/target*100)):0;let t=$('#savingsProgressText'),f=$('#savingsProgressFill');if(t)t.textContent=`${fmt(sv)} / ${fmt(target)}（${pct}%）`;if(f)f.style.width=pct+'%'}
 
