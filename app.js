@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('zh-TW');
-let cur={y:2026,m:9};
+const _today=new Date();
+let cur={y:_today.getFullYear(),m:_today.getMonth()+1};
 const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=11))?3000:0;
 const baseCardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
 function storedYuantaInstallmentDue(y,m){
@@ -671,5 +672,5 @@ function showView(v){const target=document.getElementById(v);if(!target)return;$
 $$('nav button[data-v]').forEach(b=>{b.type='button';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showView(b.dataset.v)})});
 const finishBtn=$('#finish');if(finishBtn)finishBtn.addEventListener('click',()=>{data.finished=true;data.step=4;save();});
 renderBankLoans();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=46.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=46.0.0',{updateViaCache:'none'})}catch(e){}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){if(!String(r.active?.scriptURL||'').includes('service-worker.js?v=49.0.0'))await r.unregister()}}catch(e){}try{await navigator.serviceWorker.register('./service-worker.js?v=49.0.0',{updateViaCache:'none'})}catch(e){}})}
 render();
