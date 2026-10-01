@@ -70,9 +70,14 @@ const suggestedSavings=()=>Math.max(0,Math.round(inc()*SAVINGS_RATE/100));
 const saved=()=>Math.max(0,+data.savedAmount||0);
 const baseAvailable=()=>Math.max(0,remain()-saved());
 const cashGap=()=>inc()-fixed();
-const throttleLimit=()=>Math.max(0,+data.throttleLimit||0);
 function weekRange(d=new Date()){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const day=(x.getDay()+6)%7;const start=new Date(x);start.setDate(x.getDate()-day);const end=new Date(start);end.setDate(start.getDate()+6);return {start,end}}
-function throttleSpent(){const now=new Date(),wr=weekRange(now);return data.ledger.reduce((s,x)=>{if(x.budgetImpact===false)return s;const t=dateSortValue(x.date);return t>=wr.start.getTime()&&t<=wr.end.getTime()+86399999?s+(+x.amount||0):s},0)}
+function inCurrentWeek(date){const wr=weekRange(new Date()),t=dateSortValue(date);return t>=wr.start.getTime()&&t<=wr.end.getTime()+86399999}
+// 節流只看「手頭上現金」：信用卡、當月生活費、LINE Pay Money 都不列入。
+function throttleSpent(){return data.ledger.reduce((s,x)=>x.fundingSource==='pocket'&&inCurrentWeek(x.date)?s+(+x.amount||0):s,0)}
+function weeklyPocketIncome(){return data.incomeLedger.reduce((s,x)=>x.destination==='pocket'&&inCurrentWeek(x.date)?s+(+x.amount||0):s,0)}
+function weeklySyncedLoans(){return loans?.txs?.reduce((o,x)=>{if(!x.sync||!inCurrentWeek(x.date))return o;const a=+x.amount||0;if(x.type==='borrow')o.borrow+=a;else o.repay+=a;return o},{borrow:0,repay:0})||{borrow:0,repay:0}}
+// 本週預算 = 週初原本的手頭現金。反推時排除本週後來新增的借款，避免「借越多、預算越高」。
+function weeklyCashBudget(){const l=weeklySyncedLoans();return Math.max(0,(+loans.cash||0)+throttleSpent()-weeklyPocketIncome()-l.borrow+l.repay)}
 function monthlyNewBorrow(){return loans?.txs?.reduce((s,x)=>{if(x.type!=='borrow')return s;const m=String(x.date||'').match(/^(\d{4})[\/-](\d{1,2})/);return m&&+m[1]===cur.y&&+m[2]===cur.m?s+(+x.amount||0):s},0)||0}
 const dailyBudget=()=>baseAvailable();
 const avail=()=>dailyBudget()+livingExtraIncome()-spent();
@@ -444,11 +449,11 @@ function renderDiagnosis(){
   advice.innerHTML=messages.slice(0,4).map((x,i)=>`<div class="diagAdviceItem ${i===0?'priority':''}"><span>${i===0?'優先看看':'再檢查'}</span><b>${escapeHtml(x.c)}</b><p>${x.text}</p></div>`).join('');
 }
 function renderThrottle(){
-  const gap=cashGap(),limit=throttleLimit(),weekly=limit>0?Math.round(limit/4.345):0,used=throttleSpent(),left=weekly-used,borrowed=monthlyNewBorrow();
+  const gap=cashGap(),weekly=weeklyCashBudget(),used=throttleSpent(),left=weekly-used,borrowed=monthlyNewBorrow();
   const box=$('#cashFlowControl');if(!box)return;
   $('#flowIncome').textContent=fmt(inc());$('#flowFixed').textContent=fmt(fixed());
   const g=$('#flowGap');g.textContent=(gap<0?'-':'')+fmt(Math.abs(gap));g.classList.toggle('negative',gap<0);
-  $('#throttleLimit').value=limit||'';$('#weeklyLimit').textContent=weekly?fmt(weekly):'尚未設定';$('#weeklyUsed').textContent=fmt(used);$('#weeklyLeft').textContent=weekly?(left>=0?fmt(left):'-'+fmt(Math.abs(left))):'—';
+  $('#weeklyLimit').textContent=fmt(weekly);$('#weeklyUsed').textContent=fmt(used);$('#weeklyLeft').textContent=left>=0?fmt(left):'-'+fmt(Math.abs(left));
   $('#monthlyBorrowed').textContent=fmt(borrowed);$('#borrowGoal').textContent=borrowed>0?'本月已有新增借款':'目前達成：新增借款 $0';
   const saveHint=$('#savingModeHint');if(saveHint)saveHint.textContent=gap<0?'本月固定支出已高於收入，先補足現金流缺口；建議存款暫不列為優先。':'現金流為正時，再依實際狀況安排儲蓄。';
 }
@@ -466,7 +471,6 @@ function render(){let r=remain(),rate=inc()>0?fixed()/inc()*100:0,a=avail(),db=d
 ['husband','wife','other'].forEach(id=>$('#'+id).onchange=()=>{data.income.husband=+$('#husband').value||0;data.income.wife=+$('#wife').value||0;data.income.other=+$('#other').value||0;data.finished=false;save()});
 $$('#steps button').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));$$('.nextStep').forEach(b=>b.onclick=()=>setStep(+b.dataset.next));
 $('#savedAmount').onchange=()=>{data.savedAmount=Math.max(0,+$('#savedAmount').value||0);data.finished=false;save()};
-$('#throttleLimit').onchange=()=>{data.throttleLimit=Math.max(0,+$('#throttleLimit').value||0);save()};
 // v28: 修正「新增固定支出」按鈕。開啟輸入視窗，新增後立即存入當月 localStorage。
 $('#addExpense').addEventListener('click',()=>{
   $('#eName').value='';
