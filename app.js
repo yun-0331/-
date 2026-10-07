@@ -19,7 +19,7 @@ function storedYuantaInstallmentDue(y,m){
   return total;
 }
 const cardFeeAmount=(y,m)=>baseCardFeeAmount(y,m)+storedYuantaInstallmentDue(y,m);
-const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',9000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
+const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',3000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
@@ -42,6 +42,10 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   x.expenses=x.expenses.filter(e=>!(e.name==='分期（至115年12月）'||e.scheduleId==='installment-2026-12'));
   // v41：元大 8 期不再獨立成一列，直接併入『卡費（10月～1月）』固定支出。
   // v45：下月固定支出中的中國信託、台北富邦卡費可手動修正，手動值不再被自動同步覆蓋。
+  // v51 修正版：玉山銀行結帳日13日；1～13日歸當月保險，14日起歸下月保險。
+  // v52：ETC 與加油固定預算由 9,000 調整為 3,000；原先 6,000 加油費改由國泰世華卡費預估承接，避免重複計算。
+  const etcFuel=x.expenses.find(e=>e.name==='ETC 與加油');
+  if(etcFuel && (+etcFuel.amount||0)===9000 && !etcFuel.v52EtcAdjusted){etcFuel.amount=3000;etcFuel.category='交通';etcFuel.v52EtcAdjusted=true}
   x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')));
   syncTimed('分期（至115年11月）',installmentAmount(y,m),'installment-2026-11');
   syncTimed('卡費（10月～1月）',cardFeeAmount(y,m),'cardfee-2026-10-2027-01');
@@ -137,7 +141,7 @@ function ledger(){
       let methodText=[x.method||'現金',source].filter(Boolean).join('・');
       d.innerHTML=`<div><b>${escapeHtml(x.note||x.category)}</b><small>${escapeHtml(x.category)}・${escapeHtml(methodText)}・${escapeHtml(x.date)}</small></div><div><b>-${fmt(x.amount)}</b><div class="ledgerActions"><button type="button" class="editLedger">修改</button><button type="button" class="deleteLedger">刪除</button></div></div>`;
       d.querySelector('.editLedger').onclick=()=>openExpenseEditor(x,r.i);
-      d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){const oldTx=cardTxs.find(t=>t.id===x.sourceId);if(oldTx?.installmentPlanId)removeYuantaInstallmentSchedule(oldTx.installmentPlanId);cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));refreshYuantaFixedExpenses()}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
+      d.querySelector('.deleteLedger').onclick=()=>{if(!confirm('刪除這筆支出？'))return;if(x.sourceId){const oldTx=cardTxs.find(t=>t.id===x.sourceId);if(oldTx?.card==='esun'||x.esunInsuranceLinked)adjustEsunInsuranceByDate(oldTx?.date||x.date,-(+x.amount||0));if(oldTx?.installmentPlanId)removeYuantaInstallmentSchedule(oldTx.installmentPlanId);cardTxs=cardTxs.filter(t=>t.id!==x.sourceId);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));refreshYuantaFixedExpenses()}if(x.fundingSource==='pocket'){loans.cash=(+loans.cash||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}else if(x.fundingSource==='linepay'){loans.linepayMoney=(+loans.linepayMoney||0)+(+x.amount||0);localStorage.setItem(LOAN_KEY,JSON.stringify(loans))}data.ledger.splice(r.i,1);save()};
     }
     l.appendChild(d)
   })
@@ -192,6 +196,9 @@ $('#editExpenseSave').addEventListener('click',()=>{
   else if(old.fundingSource==='linepay')loans.linepayMoney=(+loans.linepayMoney||0)+oldAmount;
 
   let sourceId=old.sourceId||null;
+  const oldCardTx=sourceId?cardTxs.find(t=>t.id===sourceId):null;
+  const oldWasEsun=oldCardTx?.card==='esun'||old.esunInsuranceLinked;
+  if(oldWasEsun)adjustEsunInsuranceByDate(oldCardTx?.date||old.date,-oldAmount);
   if(editPayMethod==='credit'){
     const card=$('#editExpenseCard').value;
     let tx=sourceId?cardTxs.find(t=>t.id===sourceId):null;
@@ -212,7 +219,7 @@ $('#editExpenseSave').addEventListener('click',()=>{
   if(!Array.isArray(targetData.ledger))targetData.ledger=[];
   const displayDate=`${targetY}/${targetM}/${targetD}`;
   let updated={amount,category,note:note||(editPayMethod==='credit'?'信用卡消費':editCashSource==='linepay'?'LINE Pay Money 開銷':'現金開銷'),date:displayDate,created:+old.created||Date.now()};
-  if(editPayMethod==='credit')updated={...updated,method:CARDS[$('#editExpenseCard').value].name,source:'credit-card',sourceId,budgetImpact:true};
+  if(editPayMethod==='credit'){const newCard=$('#editExpenseCard').value;if(newCard==='esun')adjustEsunInsuranceByDate(selectedDate,amount);updated={...updated,method:CARDS[newCard].name,source:'credit-card',sourceId,budgetImpact:newCard==='esun'?false:true,esunInsuranceLinked:newCard==='esun'};}
   else if(editCashSource==='pocket')updated={...updated,method:'現金',fundingSource:'pocket',budgetImpact:false};
   else if(editCashSource==='linepay')updated={...updated,method:'LINE Pay Money',fundingSource:'linepay',budgetImpact:false};
   else updated={...updated,method:'現金',fundingSource:'living',budgetImpact:true};
@@ -225,6 +232,26 @@ $('#editExpenseSave').addEventListener('click',()=>{
 });
 
 // ----- 信用卡 -----
+// v51 修正版：玉山 1～13 日歸當月保險；14 日起歸下月保險。
+function esunInsuranceYM(dateStr){
+  const m=String(dateStr||'').match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if(!m)return null;
+  let y=+m[1],mo=+m[2],d=+m[3];
+  if(d>=14){mo++;if(mo>12){mo=1;y++;}}
+  return {y,m:mo};
+}
+function adjustEsunInsuranceByDate(dateStr,delta){
+  const ym=esunInsuranceYM(dateStr);if(!ym||!delta)return;
+  const md=(ym.y===cur.y&&ym.m===cur.m)?data:loadMonth(ym.y,ym.m);
+  adjustInsuranceFixed(md,delta);md.finished=false;
+  if(!(ym.y===cur.y&&ym.m===cur.m))localStorage.setItem(key(ym.y,ym.m),JSON.stringify(md));
+}
+function adjustInsuranceFixed(monthData,delta){
+  if(!monthData||!delta)return;
+  let row=(monthData.expenses||[]).find(e=>e.name==='保險');
+  if(!row){row={name:'保險',amount:16500,category:'必要'};(monthData.expenses||(monthData.expenses=[])).push(row)}
+  row.amount=Math.max(0,(+row.amount||0)+delta);
+}
 const CARD_KEY='liyunjia-creditcards-v1';
 const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
 const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
@@ -233,7 +260,7 @@ let cardSettings=loadCardSettings();
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
 function est30DayInterest(balance,apr){return Math.max(0,Math.round((+balance||0)*(+apr||0)/100*30/365))}
-const CARDS={ctbc:{name:'中國信託',closeDay:()=>25},fubon:{name:'台北富邦',closeDay:()=>24},yuni_fubon:{name:'芋泥台北富邦',closeDay:()=>+cardSettings.yuniFubonCloseDay||0},cathay:{name:'國泰世華',closeDay:()=>+cardSettings.cathayCloseDay||0},yuanta:{name:'元大信用卡',closeDay:()=>26}};
+const CARDS={ctbc:{name:'中國信託',closeDay:()=>25},fubon:{name:'台北富邦',closeDay:()=>24},yuni_fubon:{name:'芋泥台北富邦',closeDay:()=>+cardSettings.yuniFubonCloseDay||0},cathay:{name:'國泰世華',closeDay:()=>+cardSettings.cathayCloseDay||0},esun:{name:'玉山銀行',closeDay:()=>13},yuanta:{name:'元大信用卡',closeDay:()=>26}};
 let cardTxs=loadCards(),cardFilter='all';
 function loadCards(){try{let x=JSON.parse(localStorage.getItem(CARD_KEY)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
 const pad=n=>String(n).padStart(2,'0');
@@ -328,9 +355,9 @@ function syncCardsToNextMonth(){
   if(!hasAuto){
     target.expenses=target.expenses.filter(e=>!(e.name==='分期／卡費' && (+e.amount||0)===9390));
   }
-  const labels={ctbc:'信用卡｜中國信託',fubon:'信用卡｜台北富邦',yuni_fubon:'信用卡｜芋泥台北富邦',cathay:'信用卡｜國泰世華',yuanta:'信用卡｜元大'};
+  const labels={ctbc:'信用卡｜中國信託',fubon:'信用卡｜台北富邦',yuni_fubon:'信用卡｜芋泥台北富邦',cathay:'信用卡｜國泰世華',esun:'信用卡｜玉山銀行',yuanta:'信用卡｜元大'};
   for(const id of Object.keys(CARDS)){
-    if(id==='yuanta')continue;
+    if(id==='yuanta'||id==='esun')continue;
     const autoAmount=cardDueForNextFixed(id);
     const idx=target.expenses.findIndex(e=>e.autoCardId===id);
     const existing=idx>=0?target.expenses[idx]:null;
@@ -549,7 +576,8 @@ $('#saveQ').addEventListener('click',()=>{
     const card=$('#qCard').value,date=selectedDate,tx={id:'cc-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date,card,amount,category,note,synced:true,created:Date.now()};
     if(card==='yuanta'){tx.installmentCount=+$('#qYuantaInstall').value===8?8:1;tx.installmentPlanId='yuanta-plan-'+tx.id;}
     cardTxs.push(tx);localStorage.setItem(CARD_KEY,JSON.stringify(cardTxs));if(card==='yuanta')scheduleYuantaInstallment(tx);
-    targetData.ledger.push({amount,category,method:CARDS[card].name,note:note||(card==='yuanta'&&tx.installmentCount===8?'元大分8期':'信用卡消費'),date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:true,created:Date.now()});
+    if(card==='esun')adjustEsunInsuranceByDate(selectedDate,amount);
+    targetData.ledger.push({amount,category,method:CARDS[card].name,note:note||(card==='yuanta'&&tx.installmentCount===8?'元大分8期':card==='esun'?'保險刷卡':'信用卡消費'),date:displayDate,source:'credit-card',sourceId:tx.id,budgetImpact:card==='esun'?false:true,esunInsuranceLinked:card==='esun',created:Date.now()});
   }else if(quickCashSource==='pocket'){
     if(amount>(+loans.cash||0)){alert(`手頭上現金目前只有 ${fmt(loans.cash)}，不足以支付這筆開銷。`);return}
     loans.cash=Math.max(0,(+loans.cash||0)-amount);localStorage.setItem(LOAN_KEY,JSON.stringify(loans));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#fbf6f4"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=49.0.0">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="stylesheet" href="./style.css?v=52.0.0">
 <title>一家五口每月開銷明細</title>
 </head>
 <body><div class="app">
@@ -129,7 +129,7 @@
           <div class="cashSourceTabs" id="cashSourceTabs"><button type="button" data-source="living" class="active">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button><button type="button" data-source="linepay">LINE Pay Money</button></div>
           <small id="cashSourceHint">這筆會從「本月目前可用」扣除。</small>
         </div>
-        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="yuanta">元大信用卡</option></select></label><label id="qYuantaInstallWrap" class="qCardWrap hidden">元大付款方式<select id="qYuantaInstall"><option value="1">一次付清</option><option value="8">分 8 期</option></select><small class="hint">選「分 8 期」後，系統會從實際應繳月份開始，自動建立連續 8 個月固定支出。</small></label>
+        <label id="qCardWrap" class="qCardWrap hidden">信用卡<select id="qCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="esun">玉山銀行</option><option value="yuanta">元大信用卡</option></select></label><label id="qYuantaInstallWrap" class="qCardWrap hidden">元大付款方式<select id="qYuantaInstall"><option value="1">一次付清</option><option value="8">分 8 期</option></select><small class="hint">選「分 8 期」後，系統會從實際應繳月份開始，自動建立連續 8 個月固定支出。</small></label>
       </div>
       <button id="saveQ" class="dailySave">＋ 加入今日開銷</button>
     </div>
@@ -224,6 +224,6 @@
 <label>備註<input id="editExpenseNote"></label>
 <div class="editPayBlock"><span class="fieldTitle">付款方式</span><div class="payMethodTabs" id="editPayMethodTabs"><button type="button" data-method="cash">現金</button><button type="button" data-method="credit">信用卡</button></div>
 <div id="editCashSourceWrap" class="cashSourceWrap"><span class="fieldTitle">現金從哪裡扣？</span><div class="cashSourceTabs" id="editCashSourceTabs"><button type="button" data-source="living">當月生活費</button><button type="button" data-source="pocket">手頭上現金</button><button type="button" data-source="linepay">LINE Pay Money</button></div></div>
-<label id="editCardWrap" class="qCardWrap hidden">信用卡<select id="editExpenseCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="yuanta">元大信用卡</option></select></label></div>
+<label id="editCardWrap" class="qCardWrap hidden">信用卡<select id="editExpenseCard"><option value="ctbc">中國信託</option><option value="fubon">台北富邦</option><option value="yuni_fubon">芋泥台北富邦</option><option value="cathay">國泰世華</option><option value="esun">玉山銀行</option><option value="yuanta">元大信用卡</option></select></label></div>
 <div class="actions"><button type="button" id="editExpenseCancel" class="soft">取消</button><button type="button" id="editExpenseSave">儲存修改</button></div></form></dialog>
-<script src="./app.js?v=49.0.0"></script></body></html>
+<script src="./app.js?v=52.0.0"></script></body></html>
