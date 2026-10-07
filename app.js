@@ -257,10 +257,13 @@ const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
 const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
 function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
+// v53：補回台北富邦實際應繳月份／金額與兩組分期欄位；舊資料有值就保留，缺欄位才使用既有預設。
+for(const [k,v] of Object.entries(cardDefaults))if(cardSettings[k]===undefined||cardSettings[k]===null||cardSettings[k]==='')cardSettings[k]=v;
+localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
 function est30DayInterest(balance,apr){return Math.max(0,Math.round((+balance||0)*(+apr||0)/100*30/365))}
-const CARDS={ctbc:{name:'中國信託',closeDay:()=>25},fubon:{name:'台北富邦',closeDay:()=>24},yuni_fubon:{name:'芋泥台北富邦',closeDay:()=>+cardSettings.yuniFubonCloseDay||0},cathay:{name:'國泰世華',closeDay:()=>+cardSettings.cathayCloseDay||0},esun:{name:'玉山銀行',closeDay:()=>13},yuanta:{name:'元大信用卡',closeDay:()=>26}};
+const CARDS={ctbc:{name:'中國信託',closeDay:()=>25},fubon:{name:'台北富邦',closeDay:()=>24},yuni_fubon:{name:'芋泥台北富邦',closeDay:()=>8},cathay:{name:'國泰世華',closeDay:()=>17},esun:{name:'玉山銀行',closeDay:()=>13},yuanta:{name:'元大信用卡',closeDay:()=>26}};
 let cardTxs=loadCards(),cardFilter='all';
 function loadCards(){try{let x=JSON.parse(localStorage.getItem(CARD_KEY)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
 const pad=n=>String(n).padStart(2,'0');
@@ -382,7 +385,7 @@ function renderCards(){
     let cv=$(`#${id}ClosedValue`),cc=$(`#${id}ClosedCycle`);if(cv)cv.textContent=fmt(closedSpend);if(cc)cc.textContent=closedCycle;
     let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
   }
-  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonActualDue').value=cardSettings.fubonActualDue||'';$('#fubonActualDueYM').value=cardSettings.fubonActualDueYM||'';$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());$('#yuniFubonCloseDay').value=cardSettings.yuniFubonCloseDay||'';$('#cathayCloseDay').value=cardSettings.cathayCloseDay||'';
+  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonActualDue').value=cardSettings.fubonActualDue||'';$('#fubonActualDueYM').value=cardSettings.fubonActualDueYM||'';$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());
   const [ny,nm]=nextMonthYM();
   $('#ccSyncMonth').textContent=`${ny}/${nm}`;
   $('#syncCtbc').textContent=fmt(ctbcDueForNextFixed());
@@ -404,7 +407,6 @@ const cardSettingInputs={
   ctbcCarry:'ctbcCarry',ctbcMinDue:'ctbcMinDue',fubonCarry:'fubonCarry',
   fubonInst1Amount:'fubonInst1Amount',fubonInst1Count:'fubonInst1Count',
   fubonInst2Amount:'fubonInst2Amount',fubonInst2Count:'fubonInst2Count',
-  yuniFubonCloseDay:'yuniFubonCloseDay',cathayCloseDay:'cathayCloseDay',
   fubonActualDue:'fubonActualDue'
 };
 for(const [id,k] of Object.entries(cardSettingInputs)){
