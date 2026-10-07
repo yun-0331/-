@@ -261,11 +261,19 @@ const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
 const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4289,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:0,fubonActualDueYM:''};
 function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
-// v54：恢復台北富邦實際帳單與分期；第一筆依實際帳單修正為 4,289。
-// 若 v53 曾自動寫入舊預設 4,290，升級時只修正這個舊預設值，不覆蓋其他手動值。
-for(const [k,v] of Object.entries(cardDefaults))if(cardSettings[k]===undefined||cardSettings[k]===null||cardSettings[k]==='')cardSettings[k]=v;
+// v56 資料遷移：v53～v55 曾把空白富邦欄位存成 0，導致之後只合併預設值仍無法恢復。
+// 只在每個瀏覽器資料區第一次升級到 v56 時補回目前帳單確認的兩筆分期，不清除任何刷卡/收支資料。
+const FUBON_V56_MIGRATION='liyunjia-fubon-v56-migrated';
+if(localStorage.getItem(FUBON_V56_MIGRATION)!=='1'){
+  cardSettings.fubonInst1Amount=4289;
+  cardSettings.fubonInst1Count=2;
+  cardSettings.fubonInst2Amount=1260;
+  cardSettings.fubonInst2Count=1;
+  if(!Number.isFinite(+cardSettings.fubonCarry))cardSettings.fubonCarry=0;
+  localStorage.setItem(FUBON_V56_MIGRATION,'1');
+}
+for(const [k,v] of Object.entries(cardDefaults))if(cardSettings[k]===undefined||cardSettings[k]===null||cardSettings[k]===''||!Number.isFinite(+cardSettings[k]))cardSettings[k]=v;
 if(+cardSettings.fubonInst1Amount===4290)cardSettings.fubonInst1Amount=4289;
-// v55：富邦應繳月份與金額改由目前選取月份自動推算，不再依賴舊的手動月份/金額。
 localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
@@ -322,7 +330,7 @@ function shortDate(s){let [y,m,d]=s.split('-').map(Number);return `${m}/${d}`}
 function statementStatus(end){let today=new Date();let t=iso(today.getFullYear(),today.getMonth()+1,today.getDate());if(t>end)return ['已結帳','closed'];return ['累計中','']}
 function nextMonthYM(y=cur.y,m=cur.m){return m===12?[y+1,1]:[y,m+1]}
 function cardEstimate(cardId){
-  if(cardId==='yuanta'){return yuantaInstallmentDueForMonth(cur.y,cur.m)+yuantaActualInstallmentDue(cur.y,cur.m);}
+  if(cardId==='yuanta'){const actual=yuantaActualInstallmentDue(cur.y,cur.m);return actual>0?actual:yuantaInstallmentDueForMonth(cur.y,cur.m);}
   const newSpend=txSum(activeStatementTxs(cardId));
   const ctbcInterest=est30DayInterest(cardSettings.ctbcCarry,cardSettings.ctbcApr);
   const fubonInterest=est30DayInterest(cardSettings.fubonCarry,cardSettings.fubonApr);
