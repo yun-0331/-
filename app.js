@@ -30,7 +30,13 @@ function installmentMonthRows(c,m){if(!c.installments?.length)return [];const [Y
 function installmentDue(c,m){if(!c.installments?.length)return 0;const [Y,M]=m.split('-').map(Number),[bY,bM]=(c.baseDate||'2026-10').slice(0,7).split('-').map(Number);const diff=(Y-bY)*12+(M-bM);if(diff<0)return 0;return sum(installmentMonthRows(c,m),i=>i.amount)}
 function fixedTotal(){return sum(state.fixed,x=>x.amount)} function incomeTotal(){return sum(Object.values(state.income))+sum(monthIncomes(),x=>x.amount)}
 function nonFixedSpend(){return sum(monthExpenses().filter(x=>!state.cards.some(c=>c.id===x.pay)),x=>x.amount)}
-function suggestedCardDue(m=month){const prev=shiftMonth(m,-1);return sum(state.cards.filter(c=>!isSameMonthPay(c)),c=>estimatedMinimum(c,prev))}
+function suggestedCardDue(m=month){const prev=shiftMonth(m,-1);return sum(state.cards.filter(c=>!isSameMonthPay(c)),c=>{
+  if(c.id==='ctbc') return estimatedMinimum(c,prev);
+  if(c.id==='fubon'||c.id==='yuanta'||c.id==='esun'){
+    return installmentDue(c,m)+monthlyCardSpend(c.id,prev);
+  }
+  return installmentDue(c,m)+monthlyCardSpend(c.id,prev);
+})}
 function monthEndSameMonthCards(m=month){return sum(state.cards.filter(isSameMonthPay),c=>outstandingAmount(c,m)+installmentDue(c,m)+monthlyCardSpend(c.id,m))}
 function actualCardPayment(){const v=state.cardPayments?.[month];return v==null?suggestedCardDue(month):Math.max(0,Number(v)||0)}
 function setCardPayment(v){if(!state.cardPayments)state.cardPayments={};state.cardPayments[month]=Math.max(0,Number(v)||0);save()}
