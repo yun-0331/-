@@ -4,8 +4,22 @@ const _today=new Date();
 let cur={y:_today.getFullYear(),m:_today.getMonth()+1};
 const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=11))?3000:0;
 const baseCardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
-// v54：依實際帳單補回元大 2026/10 本期分期應繳 3,583 元。
-const yuantaActualInstallmentDue=(y,m)=>({202610:3583}[y*100+m]||0);
+// v57：依 2026/10 元大帳單各筆分期期數，往後月份自動保留尚未到期分期。
+// 10月：953(06/08)+500(05/08)+606(05/08)+972(02/03)+552(01/08)=3,583。
+// 之後每筆到最後一期後才自動消失。
+const YUANTA_KNOWN_PLANS=[
+  {amount:953,current:6,total:8},
+  {amount:500,current:5,total:8},
+  {amount:606,current:5,total:8},
+  {amount:972,current:2,total:3},
+  {amount:552,current:1,total:8}
+];
+function yuantaKnownDue(y,m){
+  const idx=(y*12+(m-1))-(2026*12+9); // 2026/10 = 0
+  if(idx<0)return 0;
+  return YUANTA_KNOWN_PLANS.reduce((sum,p)=>sum+(p.current+idx<=p.total?p.amount:0),0);
+}
+const yuantaActualInstallmentDue=(y,m)=>yuantaKnownDue(y,m);
 function storedYuantaInstallmentDue(y,m){
   let txs=[];try{const z=JSON.parse(localStorage.getItem('liyunjia-creditcards-v1')||'[]');if(Array.isArray(z))txs=z}catch(e){}
   let total=0;
@@ -20,9 +34,9 @@ function storedYuantaInstallmentDue(y,m){
   }
   return total;
 }
-// v55：『卡費（10月～1月）』改為元大卡費專用，不再疊加舊版 3,000/2,000/1,200 基礎值。
-const cardFeeAmount=(y,m)=>{const actual=yuantaActualInstallmentDue(y,m);return actual>0?actual:storedYuantaInstallmentDue(y,m)};
-const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',3000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
+// v57：固定支出列正式改名『元大信用卡』；已知舊分期優先，再加上 App 內新建立的元大 8 期。
+const cardFeeAmount=(y,m)=>yuantaActualInstallmentDue(y,m)+storedYuantaInstallmentDue(y,m);
+const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['元大信用卡',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',3000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
 const CAT_ICON={必要:'M12 3l7 4v5c0 4.8-3 8-7 9-9-2-7-9-7-9V7l7-4z',可調整:'M4 7h16M7 7v13h10V7M9 4h6l1 3H8l1-3z',債務:'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 4h6M8 12h8M8 16h5',小孩:'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 8a6 6 0 0 1 12 0',交通:'M5 17h14l-1-7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2l-1 7zm2 0v2m10-2v2M7 13h10',其他:'M12 5v14M5 12h14'};
@@ -50,13 +64,13 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   // v54：2026/10 元大實際分期帳單 3,583 併入既有『卡費（10月～1月）』；富邦實際帳單 20,939 已含本期分期，不重複加計。
   const etcFuel=x.expenses.find(e=>e.name==='ETC 與加油');
   if(etcFuel && (+etcFuel.amount||0)===9000 && !etcFuel.v52EtcAdjusted){etcFuel.amount=3000;etcFuel.category='交通';etcFuel.v52EtcAdjusted=true}
-  x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')));
+  x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')||e.name==='卡費（10月～1月）'));
   syncTimed('分期（至115年11月）',installmentAmount(y,m),'installment-2026-11');
-  syncTimed('卡費（10月～1月）',cardFeeAmount(y,m),'cardfee-2026-10-2027-01');
+  syncTimed('元大信用卡',cardFeeAmount(y,m),'yuanta-known-installments');
   // v24：修正三筆信貸的正確每月繳款金額。
   const correctLoanPayments={'信貸(1)':7496,'信貸(2)':6100,'信貸(3)':6844};
   x.expenses.forEach(e=>{if(correctLoanPayments[e.name]!==undefined){e.amount=correctLoanPayments[e.name];e.category='債務';e.correctLoanPayment=true}});
-  const fixedOrder=['先生生活費','孝親費','大寶生活費','二寶生活費','保險','信貸(1)','信貸(2)','信貸(3)','分期（至115年11月）','卡費（10月～1月）','補習與英文','ETC 與加油','電話','長照','捐款與 ETF'];
+  const fixedOrder=['先生生活費','孝親費','大寶生活費','二寶生活費','保險','信貸(1)','信貸(2)','信貸(3)','分期（至115年11月）','元大信用卡','補習與英文','ETC 與加油','電話','長照','捐款與 ETF'];
   x.expenses.sort((a,b)=>{let ai=fixedOrder.indexOf(a.name),bi=fixedOrder.indexOf(b.name);ai=ai<0?999:ai;bi=bi<0?999:bi;return ai-bi});
   x.expenses=x.expenses.map((e,i)=>({...e,amount:+e.amount||0,category:e.category||defaultsFor(y,m)[i]?.[2]||'其他'}));
   if(!Array.isArray(x.ledger))x.ledger=[]; if(!Array.isArray(x.incomeLedger))x.incomeLedger=[]; if(x.savedAmount===undefined)x.savedAmount=0; if(x.throttleLimit===undefined)x.throttleLimit=0; if(!x.step)x.step=1; if(x.step===2)x.step=1; else if(x.step===3)x.step=2; return x}
@@ -296,7 +310,7 @@ function addMonthsYM(y,m,n){let z=(y*12+(m-1))+n;return [Math.floor(z/12),z%12+1
 function yuantaFirstDueMonth(date){const m=String(date||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return nextMonthPair(cur.y,cur.m);const y=+m[1],mo=+m[2],d=+m[3];return addMonthsYM(y,mo,d<=26?1:2)}
 function removeYuantaInstallmentSchedule(planId){if(!planId)return;for(let i=0;i<8;i++){for(let y=2025;y<=2030;y++){for(let m=1;m<=12;m++){const raw=localStorage.getItem(key(y,m));if(!raw)continue;let x;try{x=JSON.parse(raw)}catch(e){continue}if(!Array.isArray(x.expenses))continue;const before=x.expenses.length;x.expenses=x.expenses.filter(e=>e.yuantaInstallmentPlanId!==planId);if(x.expenses.length!==before)localStorage.setItem(key(y,m),JSON.stringify(x));}}}}
 function refreshYuantaFixedExpenses(){
-  const months=new Set(['2026-10','2026-11','2026-12','2027-1']);
+  const months=new Set(['2026-10','2026-11','2026-12','2027-1','2027-2','2027-3','2027-4','2027-5']);
   let txs=[];try{const z=JSON.parse(localStorage.getItem('liyunjia-creditcards-v1')||'[]');if(Array.isArray(z))txs=z}catch(e){}
   for(const tx of txs){if(tx.card!=='yuanta'||+tx.installmentCount!==8)continue;const [fy,fm]=yuantaFirstDueMonth(tx.date);for(let i=0;i<8;i++){const [y,m]=addMonthsYM(fy,fm,i);months.add(`${y}-${m}`)}}
   for(const ym of months){const [y,m]=ym.split('-').map(Number);const md=loadMonth(y,m);md.finished=false;localStorage.setItem(key(y,m),JSON.stringify(md))}
