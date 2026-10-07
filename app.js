@@ -4,6 +4,8 @@ const _today=new Date();
 let cur={y:_today.getFullYear(),m:_today.getMonth()+1};
 const installmentAmount=(y,m)=>(y<2026||(y===2026&&m<=11))?3000:0;
 const baseCardFeeAmount=(y,m)=>({202610:3000,202611:3000,202612:2000,202701:1200}[y*100+m]||0);
+// v54：依實際帳單補回元大 2026/10 本期分期應繳 3,583 元。
+const yuantaActualInstallmentDue=(y,m)=>({202610:3583}[y*100+m]||0);
 function storedYuantaInstallmentDue(y,m){
   let txs=[];try{const z=JSON.parse(localStorage.getItem('liyunjia-creditcards-v1')||'[]');if(Array.isArray(z))txs=z}catch(e){}
   let total=0;
@@ -18,7 +20,7 @@ function storedYuantaInstallmentDue(y,m){
   }
   return total;
 }
-const cardFeeAmount=(y,m)=>baseCardFeeAmount(y,m)+storedYuantaInstallmentDue(y,m);
+const cardFeeAmount=(y,m)=>baseCardFeeAmount(y,m)+storedYuantaInstallmentDue(y,m)+yuantaActualInstallmentDue(y,m);
 const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',3000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
@@ -44,6 +46,7 @@ function loadMonth(y=cur.y,m=cur.m){let x=null;try{x=JSON.parse(localStorage.get
   // v45：下月固定支出中的中國信託、台北富邦卡費可手動修正，手動值不再被自動同步覆蓋。
   // v51 修正版：玉山銀行結帳日13日；1～13日歸當月保險，14日起歸下月保險。
   // v52：ETC 與加油固定預算由 9,000 調整為 3,000；原先 6,000 加油費改由國泰世華卡費預估承接，避免重複計算。
+  // v54：2026/10 元大實際分期帳單 3,583 併入既有『卡費（10月～1月）』；富邦實際帳單 20,939 已含本期分期，不重複加計。
   const etcFuel=x.expenses.find(e=>e.name==='ETC 與加油');
   if(etcFuel && (+etcFuel.amount||0)===9000 && !etcFuel.v52EtcAdjusted){etcFuel.amount=3000;etcFuel.category='交通';etcFuel.v52EtcAdjusted=true}
   x.expenses=x.expenses.filter(e=>!(e.yuantaInstallmentPlanId||String(e.scheduleId||'').startsWith('yuanta-')||String(e.name||'').startsWith('元大信用卡｜')));
@@ -254,11 +257,15 @@ function adjustInsuranceFixed(monthData,delta){
 }
 const CARD_KEY='liyunjia-creditcards-v1';
 const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
-const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4290,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
+const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4289,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
 function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
-// v53：補回台北富邦實際應繳月份／金額與兩組分期欄位；舊資料有值就保留，缺欄位才使用既有預設。
+// v54：恢復台北富邦實際帳單與分期；第一筆依實際帳單修正為 4,289。
+// 若 v53 曾自動寫入舊預設 4,290，升級時只修正這個舊預設值，不覆蓋其他手動值。
 for(const [k,v] of Object.entries(cardDefaults))if(cardSettings[k]===undefined||cardSettings[k]===null||cardSettings[k]==='')cardSettings[k]=v;
+if(+cardSettings.fubonInst1Amount===4290)cardSettings.fubonInst1Amount=4289;
+if(!cardSettings.fubonActualDueYM)cardSettings.fubonActualDueYM='2026-10';
+if(!(+cardSettings.fubonActualDue))cardSettings.fubonActualDue=20939;
 localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
@@ -315,7 +322,7 @@ function shortDate(s){let [y,m,d]=s.split('-').map(Number);return `${m}/${d}`}
 function statementStatus(end){let today=new Date();let t=iso(today.getFullYear(),today.getMonth()+1,today.getDate());if(t>end)return ['已結帳','closed'];return ['累計中','']}
 function nextMonthYM(y=cur.y,m=cur.m){return m===12?[y+1,1]:[y,m+1]}
 function cardEstimate(cardId){
-  if(cardId==='yuanta'){const [ny,nm]=nextMonthYM();return yuantaInstallmentDueForMonth(ny,nm);}
+  if(cardId==='yuanta'){return yuantaInstallmentDueForMonth(cur.y,cur.m)+yuantaActualInstallmentDue(cur.y,cur.m);}
   const newSpend=txSum(activeStatementTxs(cardId));
   const ctbcInterest=est30DayInterest(cardSettings.ctbcCarry,cardSettings.ctbcApr);
   const fubonInterest=est30DayInterest(cardSettings.fubonCarry,cardSettings.fubonApr);
