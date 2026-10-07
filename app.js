@@ -20,7 +20,8 @@ function storedYuantaInstallmentDue(y,m){
   }
   return total;
 }
-const cardFeeAmount=(y,m)=>baseCardFeeAmount(y,m)+storedYuantaInstallmentDue(y,m)+yuantaActualInstallmentDue(y,m);
+// v55：『卡費（10月～1月）』改為元大卡費專用，不再疊加舊版 3,000/2,000/1,200 基礎值。
+const cardFeeAmount=(y,m)=>{const actual=yuantaActualInstallmentDue(y,m);return actual>0?actual:storedYuantaInstallmentDue(y,m)};
 const defaultsFor=(y=cur.y,m=cur.m)=>{let rows=[['先生生活費',12000,'必要'],['孝親費',12000,'必要'],['大寶生活費',1200,'必要'],['二寶生活費',400,'必要'],['保險',16500,'必要'],['信貸(1)',7496,'債務'],['信貸(2)',6100,'債務'],['信貸(3)',6844,'債務']];if(installmentAmount(y,m)>0)rows.push(['分期（至115年11月）',installmentAmount(y,m),'債務']);if(cardFeeAmount(y,m)>0)rows.push(['卡費（10月～1月）',cardFeeAmount(y,m),'債務']);rows.push(['補習與英文',17100,'小孩'],['ETC 與加油',3000,'交通'],['電話',4000,'必要'],['長照',1500,'必要'],['捐款與 ETF',1600,'可調整']);return rows};
 const defaults=defaultsFor();
 const CATS=['必要','可調整','債務','小孩','交通','其他'];
@@ -257,15 +258,14 @@ function adjustInsuranceFixed(monthData,delta){
 }
 const CARD_KEY='liyunjia-creditcards-v1';
 const CARD_SETTINGS_KEY='liyunjia-creditcard-settings-v5';
-const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4289,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:20939,fubonActualDueYM:'2026-10'};
+const cardDefaults={ctbcCarry:173114,ctbcApr:15,ctbcMinDue:0,fubonCarry:0,fubonApr:10.88,fubonInst1Amount:4289,fubonInst1Count:2,fubonInst2Amount:1260,fubonInst2Count:1,yuniFubonCloseDay:8,cathayCloseDay:17,fubonActualDue:0,fubonActualDueYM:''};
 function loadCardSettings(){let old={};for(const k of ['liyunjia-creditcard-settings-v2','liyunjia-creditcard-settings-v3','liyunjia-creditcard-settings-v4']){try{old={...old,...(JSON.parse(localStorage.getItem(k)||'null')||{})}}catch(e){}}try{let x=JSON.parse(localStorage.getItem(CARD_SETTINGS_KEY)||'null');if(x)return {...cardDefaults,...old,...x}}catch(e){}return {...cardDefaults,...old}}
 let cardSettings=loadCardSettings();
 // v54：恢復台北富邦實際帳單與分期；第一筆依實際帳單修正為 4,289。
 // 若 v53 曾自動寫入舊預設 4,290，升級時只修正這個舊預設值，不覆蓋其他手動值。
 for(const [k,v] of Object.entries(cardDefaults))if(cardSettings[k]===undefined||cardSettings[k]===null||cardSettings[k]==='')cardSettings[k]=v;
 if(+cardSettings.fubonInst1Amount===4290)cardSettings.fubonInst1Amount=4289;
-if(!cardSettings.fubonActualDueYM)cardSettings.fubonActualDueYM='2026-10';
-if(!(+cardSettings.fubonActualDue))cardSettings.fubonActualDue=20939;
+// v55：富邦應繳月份與金額改由目前選取月份自動推算，不再依賴舊的手動月份/金額。
 localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));
 function saveCardSettings(){localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()}
 function fubonInstallmentDue(){return (cardSettings.fubonInst1Count>0?+cardSettings.fubonInst1Amount||0:0)+(cardSettings.fubonInst2Count>0?+cardSettings.fubonInst2Amount||0:0)}
@@ -349,12 +349,8 @@ function ctbcDueForNextFixed(){
 }
 function cardDueForNextFixed(cardId){
   if(cardId==='ctbc')return ctbcDueForNextFixed();
-  if(cardId==='fubon'){
-    const [ny,nm]=nextMonthYM();
-    const ym=`${ny}-${pad(nm)}`;
-    const actual=Math.max(0,+cardSettings.fubonActualDue||0);
-    if(actual>0 && cardSettings.fubonActualDueYM===ym)return actual;
-  }
+  // v55：台北富邦直接以本期尚未結帳消費＋本期分期＋循環/利息作為下月應繳預估。
+  if(cardId==='fubon')return cardEstimate('fubon');
   return cardEstimate(cardId);
 }
 function syncCardsToNextMonth(){
@@ -392,7 +388,7 @@ function renderCards(){
     let cv=$(`#${id}ClosedValue`),cc=$(`#${id}ClosedCycle`);if(cv)cv.textContent=fmt(closedSpend);if(cc)cc.textContent=closedCycle;
     let st=$(`#${id}Status`);st.textContent=status[0];st.className='ccStatus'+(status[1]?' '+status[1]:'')
   }
-  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;$('#fubonActualDue').value=cardSettings.fubonActualDue||'';$('#fubonActualDueYM').value=cardSettings.fubonActualDueYM||'';$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());
+  $('#ctbcCarry').value=cardSettings.ctbcCarry;$('#ctbcMinDue').value=cardSettings.ctbcMinDue||'';$('#fubonCarry').value=cardSettings.fubonCarry||0;const [fdy,fdm]=nextMonthYM();const fDueYM=`${fdy}-${pad(fdm)}`;const fDueAmt=cardDueForNextFixed('fubon');$('#fubonActualDue').value=fDueAmt;$('#fubonActualDueYM').value=fDueYM;cardSettings.fubonActualDue=fDueAmt;cardSettings.fubonActualDueYM=fDueYM;localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));$('#fubonInst1Amount').value=cardSettings.fubonInst1Amount;$('#fubonInst1Count').value=cardSettings.fubonInst1Count;$('#fubonInst2Amount').value=cardSettings.fubonInst2Amount;$('#fubonInst2Count').value=cardSettings.fubonInst2Count;$('#ctbcCarryView').textContent=fmt(cardSettings.ctbcCarry);$('#ctbcInterestView').textContent=fmt(ctbcInterest);$('#ctbcInterestSummary').textContent=fmt(ctbcInterest);$('#fubonCarryView').textContent=fmt(cardSettings.fubonCarry||0);$('#fubonInterestView').textContent=fmt(fubonInterest);$('#fubonInstallmentDue').textContent=fmt(fubonInstallmentDue());
   const [ny,nm]=nextMonthYM();
   $('#ccSyncMonth').textContent=`${ny}/${nm}`;
   $('#syncCtbc').textContent=fmt(ctbcDueForNextFixed());
@@ -414,12 +410,11 @@ const cardSettingInputs={
   ctbcCarry:'ctbcCarry',ctbcMinDue:'ctbcMinDue',fubonCarry:'fubonCarry',
   fubonInst1Amount:'fubonInst1Amount',fubonInst1Count:'fubonInst1Count',
   fubonInst2Amount:'fubonInst2Amount',fubonInst2Count:'fubonInst2Count',
-  fubonActualDue:'fubonActualDue'
 };
 for(const [id,k] of Object.entries(cardSettingInputs)){
   const el=$('#'+id);if(el)el.addEventListener('change',()=>{cardSettings[k]=Math.max(0,+el.value||0);localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()});
 }
-const fubonDueYM=$('#fubonActualDueYM');if(fubonDueYM)fubonDueYM.addEventListener('change',()=>{cardSettings.fubonActualDueYM=fubonDueYM.value;localStorage.setItem(CARD_SETTINGS_KEY,JSON.stringify(cardSettings));renderCards()});
+
 
 // ----- 借款 / 手頭現金 -----
 const LOAN_KEY='liyunjia-loans-v1';
