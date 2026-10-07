@@ -24,7 +24,7 @@ function isSameMonthPay(c){return c.id==='yuni-fubon'||c.id==='cathay'}
 function nextMonthKey(m){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function paymentMonth(c,m=month){return isSameMonthPay(c)?m:nextMonthKey(m)}
 function cardDue(c){return outstandingAmount(c)+installmentDue(c,paymentMonth(c))}
-function estimatedMinimum(c){const due=actualBill(c);if(!due)return 0;return Math.min(due,Math.max(due>=1000?1000:0,Math.ceil((due*0.05)/100)*100))}
+function estimatedMinimum(c){const installments=installmentDue(c,paymentMonth(c));const nonInstallment=outstandingAmount(c)+monthlyCardSpend(c.id);if(!installments&&!nonInstallment)return 0;const nonInstallmentMin=nonInstallment?Math.min(nonInstallment,Math.max(nonInstallment>=1000?1000:0,Math.ceil((nonInstallment*0.05)/100)*100)):0;return installments+nonInstallmentMin}
 function setOutstanding(cardId,v){if(!state.cardOutstanding)state.cardOutstanding={};if(!state.cardOutstanding[month])state.cardOutstanding[month]={};state.cardOutstanding[month][cardId]=Math.max(0,Number(v)||0);save()}
 function installmentMonthRows(c,m){if(!c.installments?.length)return [];const [Y,M]=m.split('-').map(Number),[bY,bM]=(c.baseDate||'2026-10').slice(0,7).split('-').map(Number);const diff=(Y-bY)*12+(M-bM);if(diff<0)return [];return c.installments.map(i=>({...i,shown:i.current+diff})).filter(i=>i.shown>=1&&i.shown<=i.total)}
 function installmentDue(c,m){if(!c.installments?.length)return 0;const [Y,M]=m.split('-').map(Number),[bY,bM]=(c.baseDate||'2026-10').slice(0,7).split('-').map(Number);const diff=(Y-bY)*12+(M-bM);if(diff<0)return 0;return sum(installmentMonthRows(c,m),i=>i.amount)}
