@@ -1,7 +1,7 @@
 const KEY='family-finance-v203-fresh';
 const FIXED=[['芋泥生活費',12000],['孝親費',12000],['大寶生活費',1200],['二寶生活費',400],['保險',16500],['信貸①',7496],['信貸②',6100],['信貸③',6844],['安親班',8600],['英文',7600],['ETC',3000],['電話',4000],['長照',1500],['捐款＋ETF',2600],['你的生活費',7000]];
 const CARDS=[
- {id:'ctbc',name:'中國信託',close:25,mode:'statement',limit:200000,currentDue:180143,actual:195143,min:14200,baseDate:'2026-10-07'},
+ {id:'ctbc',name:'中國信託',close:25,mode:'statement',limit:200000,currentDue:0,actual:195143,min:14200,baseDate:'2026-10-07'},
  {id:'fubon',name:'台北富邦',close:24,mode:'statement',limit:100000,currentDue:0,actual:20939,min:7103,baseDate:'2026-10-07',installments:[{name:'小林鐘錶眼鏡股份有限公司',current:2,total:3,amount:1260},{name:'富邦momo-EC',current:4,total:6,amount:4289}]},
  {id:'yuni',name:'芋泥台北富邦',close:8,mode:'monthly'},
  {id:'cathay',name:'國泰世華',close:17,mode:'monthly'},
@@ -9,9 +9,14 @@ const CARDS=[
  {id:'esun',name:'玉山銀行',close:13,mode:'monthly'}
 ];
 const LOANS=[{name:'信貸①',principal:422574,payment:7496,start:'2025-10-01',end:'2032-10-01'},{name:'信貸②',principal:298073,payment:6100,start:'2024-04-12',end:'2031-04-12'},{name:'信貸③',principal:219138,payment:6844,start:'2022-07-14',end:'2029-07-14'}];
-const defaultState=()=>({version:2,income:{yuni:67000,user:33000,other:8000},fixed:FIXED.map(([name,amount])=>({id:crypto.randomUUID(),name,amount})),wallets:{cash:0,line:0},expenses:[],incomes:[],borrowPeople:[{name:'姐姐',balance:0,repaid:0},{name:'大寶',balance:0,repaid:0},{name:'二寶',balance:0,repaid:0},{name:'三寶',balance:0,repaid:0}],borrowLedger:[],cards:structuredClone(CARDS),loans:structuredClone(LOANS),loanExtra:[],loanHistory:[],cardPayments:{},cardOutstanding:{}});
+const defaultState=()=>({version:2,income:{yuni:67000,user:33000,other:8000},fixed:FIXED.map(([name,amount])=>({id:crypto.randomUUID(),name,amount})),wallets:{cash:0,line:0},expenses:[],incomes:[],borrowPeople:[{name:'媽媽',balance:180000,repaid:0},{name:'姐姐',balance:0,repaid:0},{name:'大寶',balance:0,repaid:0},{name:'二寶',balance:0,repaid:0},{name:'三寶',balance:0,repaid:0}],borrowLedger:[],cards:structuredClone(CARDS),loans:structuredClone(LOANS),loanExtra:[],loanHistory:[],cardPayments:{},cardOutstanding:{}});
 let state=load(), view='budget', month=ym(new Date());
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY))||defaultState();if(!s.cardPayments)s.cardPayments={};if(!s.cardOutstanding)s.cardOutstanding={};if(!Array.isArray(s.loanHistory))s.loanHistory=[];const defaults=structuredClone(CARDS);if(!Array.isArray(s.cards))s.cards=defaults;else{s.cards=defaults.map(d=>{const old=s.cards.find(c=>c.id===d.id)||{};const merged={...d,...old};if(d.id==='ctbc')Object.assign(merged,{name:d.name,close:25,mode:'statement',limit:200000,currentDue:180143,actual:195143,min:14200,baseDate:'2026-10-07'});if(d.id==='fubon')Object.assign(merged,{name:d.name,close:24,mode:'statement',limit:100000,currentDue:0,actual:20939,min:7103,baseDate:'2026-10-07',installments:d.installments});if(d.id==='yuanta')Object.assign(merged,{name:d.name,close:26,mode:'statement',currentDue:3583,actual:3583,min:0,baseDate:'2026-10-07',installments:d.installments});delete merged.paid;delete merged.available;return merged})}if(!Array.isArray(s.borrowPeople))s.borrowPeople=defaultState().borrowPeople; s.borrowPeople.forEach(p=>{delete p.available; const ledgerRepaid=sum((s.borrowLedger||[]).filter(x=>x.person===p.name&&x.type==='repay'),x=>x.amount); if(p.repaid==null)p.repaid=ledgerRepaid;});return s}catch{return defaultState()}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY))||defaultState();if(!s.cardPayments)s.cardPayments={};if(!s.cardOutstanding)s.cardOutstanding={};
+if(!s.cardOutstanding['2026-10'])s.cardOutstanding['2026-10']={};
+s.cardOutstanding['2026-10'].ctbc=0;if(!Array.isArray(s.loanHistory))s.loanHistory=[];
+if(!Array.isArray(s.borrowPeople))s.borrowPeople=[];
+if(!s.borrowPeople.some(p=>p.name==='媽媽'))s.borrowPeople.unshift({name:'媽媽',balance:180000,repaid:0});
+const defaults=structuredClone(CARDS);if(!Array.isArray(s.cards))s.cards=defaults;else{s.cards=defaults.map(d=>{const old=s.cards.find(c=>c.id===d.id)||{};const merged={...d,...old};if(d.id==='ctbc')Object.assign(merged,{name:d.name,close:25,mode:'statement',limit:200000,currentDue:0,actual:195143,min:14200,baseDate:'2026-10-07'});if(d.id==='fubon')Object.assign(merged,{name:d.name,close:24,mode:'statement',limit:100000,currentDue:0,actual:20939,min:7103,baseDate:'2026-10-07',installments:d.installments});if(d.id==='yuanta')Object.assign(merged,{name:d.name,close:26,mode:'statement',currentDue:3583,actual:3583,min:0,baseDate:'2026-10-07',installments:d.installments});delete merged.paid;delete merged.available;return merged})}if(!Array.isArray(s.borrowPeople))s.borrowPeople=defaultState().borrowPeople; s.borrowPeople.forEach(p=>{delete p.available; const ledgerRepaid=sum((s.borrowLedger||[]).filter(x=>x.person===p.name&&x.type==='repay'),x=>x.amount); if(p.repaid==null)p.repaid=ledgerRepaid;});return s}catch{return defaultState()}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
 function ym(d){return d.toISOString().slice(0,7)} function fmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('zh-TW')} function sum(a,f=x=>x){return a.reduce((s,x)=>s+(Number(f(x))||0),0)}
 function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -19,7 +24,7 @@ function monthExpenses(){return state.expenses.filter(x=>x.date?.slice(0,7)===mo
 function monthlyCardSpend(id,m=month){return sum(state.expenses.filter(x=>x.date?.slice(0,7)===m&&x.pay===id),x=>x.amount)}
 function shiftMonth(m,delta){const [y,mo]=m.split('-').map(Number);const d=new Date(Date.UTC(y,mo-1+delta,1));return d.toISOString().slice(0,7)}
 function actualBill(c,m=month){return cardDue(c,m)+monthlyCardSpend(c.id,m)}
-function outstandingAmount(c,m=month){const v=state.cardOutstanding?.[m]?.[c.id];if(v!=null)return Math.max(0,Number(v)||0);if(m==='2026-10'&&c.id==='ctbc')return 180143;return 0}
+function outstandingAmount(c,m=month){const v=state.cardOutstanding?.[m]?.[c.id];if(v!=null)return Math.max(0,Number(v)||0);if(m==='2026-10'&&c.id==='ctbc')return 0;return 0}
 function isSameMonthPay(c){return c.id==='yuni'||c.id==='cathay'}
 function nextMonthKey(m){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function paymentMonth(c,m=month){return isSameMonthPay(c)?m:nextMonthKey(m)}
